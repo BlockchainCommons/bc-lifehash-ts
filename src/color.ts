@@ -95,14 +95,14 @@ export class Color {
     public b = 0,
   ) {}
 
-  static white = new Color(1, 1, 1);
-  static black = new Color(0, 0, 0);
-  static red = new Color(1, 0, 0);
-  static green = new Color(0, 1, 0);
-  static blue = new Color(0, 0, 1);
-  static cyan = new Color(0, 1, 1);
-  static magenta = new Color(1, 0, 1);
-  static yellow = new Color(1, 1, 0);
+  static white: Color = new Color(1, 1, 1);
+  static black: Color = new Color(0, 0, 0);
+  static red: Color = new Color(1, 0, 0);
+  static green: Color = new Color(0, 1, 0);
+  static blue: Color = new Color(0, 0, 1);
+  static cyan: Color = new Color(0, 1, 1);
+  static magenta: Color = new Color(1, 0, 1);
+  static yellow: Color = new Color(1, 1, 0);
 
   /**
    * Create a Color from uint8 values [0..255].

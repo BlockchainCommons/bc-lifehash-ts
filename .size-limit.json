@@ -2,6 +2,6 @@
   {
     "name": "ESM entry (import *), minified + gzipped",
     "path": "dist/index.mjs",
-    "limit": "12 kB"
+    "limit": "7 kB"
   }
 ]
