@@ -1,63 +1,48 @@
 /**
- * Copyright © 2023-2026 Blockchain Commons, LLC
- * Copyright © 2025-2026 Parity Technologies
- *
+ * Fixed-size grids over typed arrays, addressed row-major with toroidal
+ * wrap-around for neighbourhoods.
  */
 
-/**
- * A class that holds a 2-dimensional grid of values,
- * and allows the reading, writing, and iteration through those values.
- */
-export class Grid<T> {
-  public readonly storage: T[];
+/** A grid of booleans stored one byte per cell. */
+export class BoolGrid {
+  readonly cells: Uint8Array;
 
   constructor(
-    public readonly width: number,
-    public readonly height: number,
-    defaultValue: T,
+    readonly width: number,
+    readonly height: number,
   ) {
-    this.storage = new Array<T>(width * height).fill(defaultValue);
+    this.cells = new Uint8Array(width * height);
   }
 
-  private offset(x: number, y: number): number {
-    return y * this.width + x;
+  get(x: number, y: number): boolean {
+    return this.cells[y * this.width + x] !== 0;
   }
 
-  private static circularIndex(index: number, modulus: number): number {
-    return ((index % modulus) + modulus) % modulus;
+  set(x: number, y: number, value: boolean): void {
+    this.cells[y * this.width + x] = value ? 1 : 0;
   }
 
-  setAll(value: T): void {
-    this.storage.fill(value);
+  fill(value: boolean): void {
+    this.cells.fill(value ? 1 : 0);
+  }
+}
+
+/** A grid of floats. */
+export class FloatGrid {
+  readonly values: Float64Array;
+
+  constructor(
+    readonly width: number,
+    readonly height: number,
+  ) {
+    this.values = new Float64Array(width * height);
   }
 
-  setValue(value: T, x: number, y: number): void {
-    this.storage[this.offset(x, y)] = value;
+  get(x: number, y: number): number {
+    return this.values[y * this.width + x];
   }
 
-  getValue(x: number, y: number): T {
-    return this.storage[this.offset(x, y)];
-  }
-
-  forAll(f: (x: number, y: number) => void): void {
-    for (let y = 0; y < this.height; y++) {
-      for (let x = 0; x < this.width; x++) {
-        f(x, y);
-      }
-    }
-  }
-
-  forNeighborhood(
-    px: number,
-    py: number,
-    f: (ox: number, oy: number, nx: number, ny: number) => void,
-  ): void {
-    for (let oy = -1; oy <= 1; oy++) {
-      for (let ox = -1; ox <= 1; ox++) {
-        const nx = Grid.circularIndex(ox + px, this.width);
-        const ny = Grid.circularIndex(oy + py, this.height);
-        f(ox, oy, nx, ny);
-      }
-    }
+  set(x: number, y: number, value: number): void {
+    this.values[y * this.width + x] = value;
   }
 }

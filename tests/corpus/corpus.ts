@@ -19,9 +19,17 @@ const hexOf = (next: () => number, len: number): string =>
   Array.from({ length: len }, () => (next() & 0xff).toString(16).padStart(2, "0")).join("");
 
 /** Hand-picked inputs: empty, one byte, ASCII, multi-byte UTF-8, edge digests. */
-export const HAND_UTF8 = ["", "a", "Hello", "Hello, World!", "LifeHash", "unicode ✓ ☺ 日本", "🌈"];
-export const HAND_DATA = ["", "00", "ff", "0001020304", "deadbeef".repeat(4)];
-export const HAND_DIGESTS = [
+export const HAND_UTF8: readonly string[] = [
+  "",
+  "a",
+  "Hello",
+  "Hello, World!",
+  "LifeHash",
+  "unicode ✓ ☺ 日本",
+  "🌈",
+];
+export const HAND_DATA: readonly string[] = ["", "00", "ff", "0001020304", "deadbeef".repeat(4)];
+export const HAND_DIGESTS: readonly string[] = [
   "00".repeat(32),
   "ff".repeat(32),
   "0123456789abcdef".repeat(4),
@@ -77,7 +85,7 @@ export function* generated(): Generator<Recipe> {
   }
 }
 
-export const categories = { hand, generated };
+export const categories: Record<string, () => Generator<Recipe>> = { hand, generated };
 
 /** The golden subset: the hand corpus plus the first 40 generated inputs. */
 export function* goldenRecipes(): Generator<Recipe> {

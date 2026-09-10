@@ -1,11 +1,3 @@
-/**
- * Copyright © 2023-2026 Blockchain Commons, LLC
- * Copyright © 2025-2026 Parity Technologies
- *
- */
-
-import { Grid } from "./grid";
-import { Color } from "./color";
 import type { FracGrid } from "./frac-grid";
 import type { ColorFunc } from "./color-func";
 import { Pattern } from "./patterns";
@@ -32,44 +24,36 @@ const pinwheelTransforms: Transform[] = [
 
 const fiducialTransforms: Transform[] = [{ transpose: false, reflectX: false, reflectY: false }];
 
-/**
- * A class that takes a grayscale grid and applies color and
- * symmetry to it to yield the finished LifeHash.
- */
+/** The coloured, symmetry-expanded image as RGB floats in [0, 1]. */
 export class ColorGrid {
-  public readonly grid: Grid<Color>;
+  readonly width: number;
+  readonly height: number;
+  /** Three floats per pixel, row-major. */
+  readonly colors: Float64Array;
 
   constructor(fracGrid: FracGrid, gradient: ColorFunc, pattern: Pattern) {
     const multiplier = pattern === Pattern.fiducial ? 1 : 2;
-    const targetWidth = fracGrid.grid.width * multiplier;
-    const targetHeight = fracGrid.grid.height * multiplier;
-
-    this.grid = new Grid<Color>(targetWidth, targetHeight, new Color());
-
-    const maxX = targetWidth - 1;
-    const maxY = targetHeight - 1;
-
-    const transforms: Transform[] = ColorGrid.getTransforms(pattern);
-
+    this.width = fracGrid.grid.width * multiplier;
+    this.height = fracGrid.grid.height * multiplier;
+    this.colors = new Float64Array(this.width * this.height * 3);
+    const maxX = this.width - 1;
+    const maxY = this.height - 1;
+    const transforms = ColorGrid.getTransforms(pattern);
     const fracWidth = fracGrid.grid.width;
     const fracHeight = fracGrid.grid.height;
     for (let y = 0; y < fracHeight; y++) {
       for (let x = 0; x < fracWidth; x++) {
-        const value = fracGrid.grid.getValue(x, y);
-        const color = gradient(value);
+        const color = gradient(fracGrid.grid.get(x, y));
         for (const t of transforms) {
           let px = x;
           let py = y;
-          if (t.transpose) {
-            [px, py] = [py, px];
-          }
-          if (t.reflectX) {
-            px = maxX - px;
-          }
-          if (t.reflectY) {
-            py = maxY - py;
-          }
-          this.grid.setValue(color, px, py);
+          if (t.transpose) [px, py] = [py, px];
+          if (t.reflectX) px = maxX - px;
+          if (t.reflectY) py = maxY - py;
+          const o = (py * this.width + px) * 3;
+          this.colors[o] = color.r;
+          this.colors[o + 1] = color.g;
+          this.colors[o + 2] = color.b;
         }
       }
     }
@@ -84,13 +68,5 @@ export class ColorGrid {
       case Pattern.fiducial:
         return fiducialTransforms;
     }
-  }
-
-  colors(): number[] {
-    const result: number[] = [];
-    for (const c of this.grid.storage) {
-      result.push(c.r, c.g, c.b);
-    }
-    return result;
   }
 }

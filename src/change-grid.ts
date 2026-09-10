@@ -1,31 +1,22 @@
-/**
- * Copyright © 2023-2026 Blockchain Commons, LLC
- * Copyright © 2025-2026 Parity Technologies
- *
- */
+import { BoolGrid } from "./grid";
 
-import { Grid } from "./grid";
-
-/**
- * A grid used to optimize the running of Conway's Game of Life by keeping
- * track of cells that need consideration in the next generation, which
- * allows the pruning of cells that don't need consideration.
- */
+/** Marks cells whose neighbourhood changed and must be re-evaluated. */
 export class ChangeGrid {
-  public readonly grid: Grid<boolean>;
+  readonly grid: BoolGrid;
 
   constructor(width: number, height: number) {
-    this.grid = new Grid<boolean>(width, height, false);
+    this.grid = new BoolGrid(width, height);
   }
 
   setChanged(px: number, py: number): void {
     const width = this.grid.width;
     const height = this.grid.height;
+    const cells = this.grid.cells;
     for (let oy = -1; oy <= 1; oy++) {
+      const ny = (((oy + py) % height) + height) % height;
       for (let ox = -1; ox <= 1; ox++) {
         const nx = (((ox + px) % width) + width) % width;
-        const ny = (((oy + py) % height) + height) % height;
-        this.grid.setValue(true, nx, ny);
+        cells[ny * width + nx] = 1;
       }
     }
   }

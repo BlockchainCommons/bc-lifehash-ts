@@ -32,7 +32,7 @@ export interface Image {
 function makeImage(
   width: number,
   height: number,
-  floatColors: number[],
+  floatColors: Float64Array,
   moduleSize: number,
   hasAlpha: boolean,
 ): Image {
@@ -176,7 +176,7 @@ export function makeFromDigest(
     }
   }
 
-  nextChangeGrid.grid.setAll(true);
+  nextChangeGrid.grid.fill(true);
 
   // Run the Game of Life
   while (history.length < maxGenerations) {
@@ -212,17 +212,14 @@ export function makeFromDigest(
   if (version !== Version.version1) {
     let minValue = Infinity;
     let maxValue = -Infinity;
-
-    fracGrid.grid.forAll((x, y) => {
-      const value = fracGrid.grid.getValue(x, y);
-      minValue = min(minValue, value);
-      maxValue = max(maxValue, value);
-    });
-
-    fracGrid.grid.forAll((x, y) => {
-      const value = lerpFrom(minValue, maxValue, fracGrid.grid.getValue(x, y));
-      fracGrid.grid.setValue(value, x, y);
-    });
+    const values = fracGrid.grid.values;
+    for (let i = 0; i < values.length; i++) {
+      minValue = min(minValue, values[i]);
+      maxValue = max(maxValue, values[i]);
+    }
+    for (let i = 0; i < values.length; i++) {
+      values[i] = lerpFrom(minValue, maxValue, values[i]);
+    }
   }
 
   // Select gradient and pattern
@@ -248,11 +245,5 @@ export function makeFromDigest(
   const pattern = selectPattern(entropy, version);
   const colorGrid = new ColorGrid(fracGrid, gradient, pattern);
 
-  return makeImage(
-    colorGrid.grid.width,
-    colorGrid.grid.height,
-    colorGrid.colors(),
-    moduleSize,
-    hasAlpha,
-  );
+  return makeImage(colorGrid.width, colorGrid.height, colorGrid.colors, moduleSize, hasAlpha);
 }
