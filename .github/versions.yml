@@ -1,0 +1,8 @@
+# Version map: TypeScript package -> Reference implementation
+# Used by workflow automation to track upstream reference versions.
+packages:
+  lifehash:
+    npm: "@blockchaincommons/lifehash"
+    repo: "BlockchainCommons/bc-lifehash-rust"
+    version: "0.1.0"
+    commit: "081daa072e1095b9100f35d2ee3cfe17e9f5bbb2"
