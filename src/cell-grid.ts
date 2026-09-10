@@ -1,5 +1,4 @@
 import { BoolGrid } from "./grid";
-import type { Data } from "./data";
 import type { ChangeGrid } from "./change-grid";
 
 /** One generation of Conway's Life on a torus, with a change mask to skip settled cells. */
@@ -11,7 +10,7 @@ export class CellGrid {
   }
 
   /** The cells packed as bits, row-major, most significant bit first. */
-  data(): Data {
+  data(): Uint8Array {
     const cells = this.grid.cells;
     const out = new Uint8Array(Math.ceil(cells.length / 8));
     for (let i = 0; i < cells.length; i++) {
@@ -21,7 +20,7 @@ export class CellGrid {
   }
 
   /** Unpacks bits into the cells, row-major, most significant bit first. */
-  setData(data: Data): void {
+  setData(data: Uint8Array): void {
     const cells = this.grid.cells;
     const n = Math.min(cells.length, data.length * 8);
     for (let i = 0; i < n; i++) {

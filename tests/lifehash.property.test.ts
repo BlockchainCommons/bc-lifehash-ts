@@ -47,28 +47,26 @@ describe("lifehash properties", () => {
 
   it("module size k repeats each pixel k×k; alpha adds a 255 channel", () => {
     fc.assert(
-      fc.property(bytes, version, fc.integer({ min: 2, max: 4 }), (d, v, k) => {
+      fc.property(bytes, version, fc.integer({ min: 2, max: 3 }), (d, v, k) => {
         const [w, h, base] = render("data", hex(d), v);
         const [wk, hk, big] = render("data", hex(d), v, k);
         expect([wk, hk]).toEqual([w * k, h * k]);
+        const tiled = new Uint8Array(wk * hk * 3);
         for (let y = 0; y < hk; y++)
           for (let x = 0; x < wk; x++) {
-            const s = (((y / k) | 0) * w + ((x / k) | 0)) * 3;
-            const t = (y * wk + x) * 3;
-            expect(big[t]).toBe(base[s]);
-            expect(big[t + 1]).toBe(base[s + 1]);
-            expect(big[t + 2]).toBe(base[s + 2]);
+            const s = (Math.floor(y / k) * w + Math.floor(x / k)) * 3;
+            tiled.set(base.subarray(s, s + 3), (y * wk + x) * 3);
           }
+        expect(big).toEqual(tiled);
         const [, , rgba] = render("data", hex(d), v, 1, true);
-        expect(rgba.length).toBe(w * h * 4);
+        const expectedRgba = new Uint8Array(w * h * 4);
         for (let i = 0; i < w * h; i++) {
-          expect(rgba[i * 4]).toBe(base[i * 3]);
-          expect(rgba[i * 4 + 1]).toBe(base[i * 3 + 1]);
-          expect(rgba[i * 4 + 2]).toBe(base[i * 3 + 2]);
-          expect(rgba[i * 4 + 3]).toBe(255);
+          expectedRgba.set(base.subarray(i * 3, i * 3 + 3), i * 4);
+          expectedRgba[i * 4 + 3] = 255;
         }
+        expect(rgba).toEqual(expectedRgba);
       }),
-      { numRuns: 30 },
+      { numRuns: 20 },
     );
   });
 

@@ -5,7 +5,7 @@
  */
 
 import { type BitEnumerator } from "./bit-enumerator";
-import { Version } from "./version";
+import { type LifeHashVersion } from "./version";
 
 /**
  * The symmetries used by LifeHash.
@@ -23,14 +23,14 @@ export enum Pattern {
  * A function that takes a deterministic source of bits and selects a pattern
  * used to add symmetry to a particular LifeHash version.
  */
-export function selectPattern(entropy: BitEnumerator, version: Version): Pattern {
+export function selectPattern(entropy: BitEnumerator, version: LifeHashVersion): Pattern {
   switch (version) {
-    case Version.fiducial:
-    case Version.grayscale_fiducial:
+    case "fiducial":
+    case "grayscaleFiducial":
       return Pattern.fiducial;
-    case Version.version1:
-    case Version.version2:
-    case Version.detailed:
+    case "version1":
+    case "version2":
+    case "detailed":
       return entropy.next() ? Pattern.snowflake : Pattern.pinwheel;
   }
 }

@@ -24,12 +24,35 @@ const BASELINE_SHA256 = readFileSync(join(here, "baseline/README.md"), "utf8").m
   /Baseline sha256: ([0-9a-f]{64})/,
 )?.[1];
 
-/** Tombstones: the only allowed differences. None yet. */
+/** Tombstones: the only allowed differences (Phase 3 W4 directive errors). */
 const TOMBSTONES: {
   id: string;
   landed: boolean;
   matches: (r: Recipe, baselineOutcome: string, currentOutcome: string) => boolean;
-}[] = [];
+}[] = [
+  {
+    // A module size that is not a positive integer threw a plain
+    // `Error("Invalid module size")` after rendering; it is now a
+    // `LifeHashError` with code `InvalidModuleSize`, checked up front.
+    id: "T1-invalid-module-size-code",
+    landed: true,
+    matches: (r, a, b) =>
+      (!Number.isInteger(r.moduleSize) || r.moduleSize <= 0) &&
+      a === "throw:Invalid module size" &&
+      b === "throw:InvalidModuleSize",
+  },
+  {
+    // A digest that is not 32 bytes threw a plain `Error`; it is now a
+    // `LifeHashError` with code `InvalidDigestLength`.
+    id: "T2-invalid-digest-length-code",
+    landed: true,
+    matches: (r, a, b) =>
+      r.k === "digest" &&
+      r.s.length !== 64 &&
+      a === "throw:Digest must be 32 bytes" &&
+      b === "throw:InvalidDigestLength",
+  },
+];
 
 const baseline = baselineAdapterFor(baselineMod);
 const current = redesignedAdapterFor(src);

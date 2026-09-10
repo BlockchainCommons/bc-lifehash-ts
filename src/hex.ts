@@ -4,8 +4,6 @@
  *
  */
 
-import type { Data } from "./data";
-
 const HEX_CHARS = "0123456789abcdef";
 
 function byteToHex(byte: number): string {
@@ -15,7 +13,7 @@ function byteToHex(byte: number): string {
 /**
  * Convert data to a hex string.
  */
-export function dataToHex(data: Data): string {
+export function dataToHex(data: Uint8Array): string {
   let result = "";
   for (const c of data) {
     result += byteToHex(c);
@@ -38,7 +36,7 @@ function hexDigitToBin(hex: string): number {
 /**
  * Convert a hex string to data.
  */
-export function hexToData(hex: string): Data {
+export function hexToData(hex: string): Uint8Array {
   const len = hex.length;
   if (len % 2 !== 0) {
     throw new Error("Hex string must have even number of characters.");

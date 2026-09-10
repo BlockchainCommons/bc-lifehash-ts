@@ -1,11 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { makeFromUtf8, Version } from "../src";
+import {
+  lifehash,
+  lifehashFromDigest,
+  LifeHashError,
+  lifehashVersionCode,
+  lifehashVersionFromCode,
+} from "../src";
 import { dataToHex, hexToData } from "../src/hex";
-import { sha256 } from "../src/sha256";
+import { sha256 } from "@blockchaincommons/crypto";
 
 describe("LifeHash", () => {
   it("should generate correct lifehash from UTF-8 string", () => {
-    const image = makeFromUtf8("Hello");
+    const image = lifehash("Hello");
 
     expect(image.width).toBe(32);
     expect(image.height).toBe(32);
@@ -17,12 +23,12 @@ describe("LifeHash", () => {
     ];
 
     for (let i = 0; i < expected.length; i++) {
-      expect(image.colors[i]).toBe(expected[i]);
+      expect(image.pixels[i]).toBe(expected[i]);
     }
   });
 
   it("should generate correct lifehash with alpha channel", () => {
-    const image = makeFromUtf8("Hello", Version.version2, 1, true);
+    const image = lifehash("Hello", { alpha: true });
 
     expect(image.width).toBe(32);
     expect(image.height).toBe(32);
@@ -34,8 +40,43 @@ describe("LifeHash", () => {
     ];
 
     for (let i = 0; i < expected.length; i++) {
-      expect(image.colors[i]).toBe(expected[i]);
+      expect(image.pixels[i]).toBe(expected[i]);
     }
+  });
+});
+
+describe("options and errors", () => {
+  it("channels and defaults", () => {
+    expect(lifehash("x").channels).toBe(3);
+    expect(lifehash("x", { alpha: true }).channels).toBe(4);
+    expect(lifehash("x", { version: "detailed" }).width).toBe(64);
+    expect(lifehash("x", { moduleSize: 2 }).width).toBe(64);
+    expect(lifehash(new TextEncoder().encode("x")).pixels).toEqual(lifehash("x").pixels);
+  });
+
+  it("rejects bad module sizes and digests with codes", () => {
+    for (const moduleSize of [0, -1, 1.5, NaN]) {
+      try {
+        lifehash("x", { moduleSize });
+        throw new Error("expected a throw");
+      } catch (e) {
+        expect(LifeHashError.isLifeHashError(e)).toBe(true);
+        expect((e as LifeHashError).code).toBe("InvalidModuleSize");
+      }
+    }
+    expect(() => lifehashFromDigest(new Uint8Array(31))).toThrow(LifeHashError);
+    try {
+      lifehashFromDigest(new Uint8Array(33));
+    } catch (e) {
+      expect((e as LifeHashError).code).toBe("InvalidDigestLength");
+    }
+  });
+
+  it("version codes", () => {
+    expect(lifehashVersionCode("version1")).toBe(0);
+    expect(lifehashVersionCode("grayscaleFiducial")).toBe(4);
+    expect(lifehashVersionFromCode(2)).toBe("detailed");
+    expect(lifehashVersionFromCode(9)).toBeUndefined();
   });
 });
 

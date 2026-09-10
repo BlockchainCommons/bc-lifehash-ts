@@ -5,36 +5,70 @@
 ```ts
 
 // @public
-export type Data = Uint8Array;
-
-// @public
 interface Image_2 {
     // (undocumented)
-    colors: Uint8Array;
+    readonly channels: 3 | 4;
     // (undocumented)
-    height: number;
+    readonly height: number;
     // (undocumented)
-    width: number;
+    readonly pixels: Uint8Array;
+    // (undocumented)
+    readonly width: number;
 }
 export { Image_2 as Image }
 
 // @public
-export function makeFromData(data: Data, version?: Version, moduleSize?: number, hasAlpha?: boolean): Image_2;
+export function lifehash(input: string | Uint8Array, options?: LifeHashOptions): Image_2;
 
 // @public
-export function makeFromDigest(digest: Data, version?: Version, moduleSize?: number, hasAlpha?: boolean): Image_2;
-
-// @public
-export function makeFromUtf8(s: string, version?: Version, moduleSize?: number, hasAlpha?: boolean): Image_2;
-
-// @public
-export enum Version {
-    detailed = 2,
-    fiducial = 3,
-    grayscale_fiducial = 4,
-    version1 = 0,
-    version2 = 1
+export class LifeHashError extends Error {
+    constructor(code: LifeHashErrorCode, message: string);
+    // (undocumented)
+    readonly code: LifeHashErrorCode;
+    // (undocumented)
+    static invalidDigestLength(length: number): LifeHashError;
+    // (undocumented)
+    static invalidModuleSize(moduleSize: number): LifeHashError;
+    // (undocumented)
+    static isLifeHashError(e: unknown): e is LifeHashError;
 }
+
+// @public
+export const LifeHashErrorCode: {
+    readonly InvalidModuleSize: "InvalidModuleSize";
+    readonly InvalidDigestLength: "InvalidDigestLength";
+};
+
+// @public
+export type LifeHashErrorCode = (typeof LifeHashErrorCode)[keyof typeof LifeHashErrorCode];
+
+// @public
+export function lifehashFromDigest(digest: Uint8Array, options?: LifeHashOptions): Image_2;
+
+// @public
+export interface LifeHashOptions {
+    alpha?: boolean;
+    moduleSize?: number;
+    version?: LifeHashVersion;
+}
+
+// @public
+export const LifeHashVersion: {
+    readonly version1: "version1";
+    readonly version2: "version2";
+    readonly detailed: "detailed";
+    readonly fiducial: "fiducial";
+    readonly grayscaleFiducial: "grayscaleFiducial";
+};
+
+// @public
+export type LifeHashVersion = (typeof LifeHashVersion)[keyof typeof LifeHashVersion];
+
+// @public
+export function lifehashVersionCode(version: LifeHashVersion): number;
+
+// @public
+export function lifehashVersionFromCode(code: number): LifeHashVersion | undefined;
 
 // (No @packageDocumentation comment for this package)
 

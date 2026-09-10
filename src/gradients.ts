@@ -8,7 +8,7 @@ import { Color, lerp, modulo } from "./color";
 import { HSBColor } from "./hsb-color";
 import { blend, blend2, reverse, type ColorFunc } from "./color-func";
 import { type BitEnumerator } from "./bit-enumerator";
-import { Version } from "./version";
+import { type LifeHashVersion } from "./version";
 
 function grayscale(): ColorFunc {
   return blend2(Color.black, Color.white);
@@ -303,8 +303,8 @@ function analogousFiducial(entropy: BitEnumerator): ColorFunc {
  * A function that takes a deterministic source of bits and selects a gradient
  * used to color a particular LifeHash version.
  */
-export function selectGradient(entropy: BitEnumerator, version: Version): ColorFunc {
-  if (version === Version.grayscale_fiducial) {
+export function selectGradient(entropy: BitEnumerator, version: LifeHashVersion): ColorFunc {
+  if (version === "grayscaleFiducial") {
     return selectGrayscale(entropy);
   }
 
@@ -313,48 +313,48 @@ export function selectGradient(entropy: BitEnumerator, version: Version): ColorF
   switch (value) {
     case 0:
       switch (version) {
-        case Version.version1:
+        case "version1":
           return monochromatic(entropy, makeHue);
-        case Version.version2:
-        case Version.detailed:
+        case "version2":
+        case "detailed":
           return monochromatic(entropy, spectrumCmykSafe());
-        case Version.fiducial:
+        case "fiducial":
           return monochromaticFiducial(entropy);
         default:
           return grayscale();
       }
     case 1:
       switch (version) {
-        case Version.version1:
+        case "version1":
           return complementary(entropy, spectrum());
-        case Version.version2:
-        case Version.detailed:
+        case "version2":
+        case "detailed":
           return complementary(entropy, spectrumCmykSafe());
-        case Version.fiducial:
+        case "fiducial":
           return complementaryFiducial(entropy);
         default:
           return grayscale();
       }
     case 2:
       switch (version) {
-        case Version.version1:
+        case "version1":
           return triadic(entropy, spectrum());
-        case Version.version2:
-        case Version.detailed:
+        case "version2":
+        case "detailed":
           return triadic(entropy, spectrumCmykSafe());
-        case Version.fiducial:
+        case "fiducial":
           return triadicFiducial(entropy);
         default:
           return grayscale();
       }
     case 3:
       switch (version) {
-        case Version.version1:
+        case "version1":
           return analogous(entropy, spectrum());
-        case Version.version2:
-        case Version.detailed:
+        case "version2":
+        case "detailed":
           return analogous(entropy, spectrumCmykSafe());
-        case Version.fiducial:
+        case "fiducial":
           return analogousFiducial(entropy);
         default:
           return grayscale();

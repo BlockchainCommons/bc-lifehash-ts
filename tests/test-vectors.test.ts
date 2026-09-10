@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, it, expect } from "vitest";
-import { makeFromUtf8, makeFromData, Version } from "../src";
+import { lifehash, type LifeHashVersion } from "../src";
 import { hexToData } from "../src/hex";
 
 interface TestVector {
@@ -14,12 +14,12 @@ interface TestVector {
   colors: number[];
 }
 
-const versionMap: Record<TestVector["version"], Version> = {
-  version1: Version.version1,
-  version2: Version.version2,
-  detailed: Version.detailed,
-  fiducial: Version.fiducial,
-  grayscale_fiducial: Version.grayscale_fiducial,
+const versionMap: Record<TestVector["version"], LifeHashVersion> = {
+  version1: "version1",
+  version2: "version2",
+  detailed: "detailed",
+  fiducial: "fiducial",
+  grayscale_fiducial: "grayscaleFiducial",
 };
 
 const fixtureUrl = new URL("./fixtures/test-vectors.json", import.meta.url);
@@ -42,23 +42,24 @@ describe("LifeHash upstream test vectors", () => {
     const label = `#${idx} ${v.version} m=${v.module_size} alpha=${v.has_alpha} ${v.input_type}:"${v.input}"`;
     it(label, () => {
       const version = versionMap[v.version];
-      const image =
-        v.input_type === "utf8"
-          ? makeFromUtf8(v.input, version, v.module_size, v.has_alpha)
-          : makeFromData(hexToData(v.input), version, v.module_size, v.has_alpha);
+      const image = lifehash(v.input_type === "utf8" ? v.input : hexToData(v.input), {
+        version,
+        moduleSize: v.module_size,
+        alpha: v.has_alpha,
+      });
 
       expect(image.width).toBe(v.width);
       expect(image.height).toBe(v.height);
 
       const expectedLen = v.width * v.height * (v.has_alpha ? 4 : 3);
-      expect(image.colors.length).toBe(expectedLen);
+      expect(image.pixels.length).toBe(expectedLen);
       expect(v.colors.length).toBe(expectedLen);
 
-      const mm = firstMismatch(image.colors, v.colors);
+      const mm = firstMismatch(image.pixels, v.colors);
       if (mm === null) return;
       if (mm === -1) {
         throw new Error(
-          `length mismatch: actual=${image.colors.length} expected=${v.colors.length}`,
+          `length mismatch: actual=${image.pixels.length} expected=${v.colors.length}`,
         );
       }
       const window = 8;
@@ -66,7 +67,7 @@ describe("LifeHash upstream test vectors", () => {
       const end = Math.min(expectedLen, mm + window);
       throw new Error(
         `pixel mismatch at byte ${mm}\n` +
-          `  actual   [${start}..${end}] = ${Array.from(image.colors.slice(start, end)).join(",")}\n` +
+          `  actual   [${start}..${end}] = ${Array.from(image.pixels.slice(start, end)).join(",")}\n` +
           `  expected [${start}..${end}] = ${v.colors.slice(start, end).join(",")}`,
       );
     });

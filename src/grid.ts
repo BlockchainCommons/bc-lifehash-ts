@@ -14,14 +14,6 @@ export class BoolGrid {
     this.cells = new Uint8Array(width * height);
   }
 
-  get(x: number, y: number): boolean {
-    return this.cells[y * this.width + x] !== 0;
-  }
-
-  set(x: number, y: number, value: boolean): void {
-    this.cells[y * this.width + x] = value ? 1 : 0;
-  }
-
   fill(value: boolean): void {
     this.cells.fill(value ? 1 : 0);
   }
@@ -40,9 +32,5 @@ export class FloatGrid {
 
   get(x: number, y: number): number {
     return this.values[y * this.width + x];
-  }
-
-  set(x: number, y: number, value: number): void {
-    this.values[y * this.width + x] = value;
   }
 }

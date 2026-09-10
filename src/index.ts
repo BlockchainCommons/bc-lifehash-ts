@@ -1,8 +1,9 @@
 /**
- * Copyright © 2023-2026 Blockchain Commons, LLC
- * Copyright © 2025-2026 Parity Technologies
+ * LifeHash: a visual hash. `lifehash("Hello")` renders a 32×32 image whose
+ * pixels are a deterministic function of the input.
  *
+ * @module
  */
-
-export { Version, makeFromUtf8, makeFromData, makeFromDigest, type Image } from "./lib";
-export type { Data } from "./data";
+export { lifehash, lifehashFromDigest, type Image, type LifeHashOptions } from "./lifehash";
+export { LifeHashVersion, lifehashVersionCode, lifehashVersionFromCode } from "./version";
+export { LifeHashError, LifeHashErrorCode } from "./error";

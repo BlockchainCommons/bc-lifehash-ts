@@ -2,6 +2,15 @@
 
 ## 1.0.0-beta.1
 
+### Changed
+
+- **API redesign.** One entry point, `lifehash(input, { version, moduleSize, alpha })` (a string is UTF-8 encoded, bytes are hashed) plus `lifehashFromDigest(digest, options)`; `Image` is `{ width, height, channels, pixels }`; `Version` is the string union `LifeHashVersion` with `lifehashVersionCode`/`lifehashVersionFromCode` for the 0–4 wire numbers; invalid module sizes and digest lengths throw `LifeHashError` with a `code`. Every pixel is unchanged (differential against the frozen pre-redesign bundle; Rust harness 745/745). See [MIGRATION.md](./MIGRATION.md).
+- Grids are typed arrays: 2.5–5× faster rendering.
+
+### Removed
+
+- `makeFromUtf8`, `makeFromData`, `makeFromDigest`, `Version`, `Data`.
+
 Extracted from the [`paritytech/bcts`](https://github.com/paritytech/bcts) monorepo, where this library was published as `@bcts/lifehash`. The public API is unchanged; see [MIGRATION.md](./MIGRATION.md).
 
 ---

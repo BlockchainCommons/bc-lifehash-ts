@@ -32,13 +32,23 @@ bun add @blockchaincommons/lifehash
 ## Usage Instructions
 
 ```typescript
-import {
-  Version,
-  makeFromUtf8,
-  makeFromData,
-  makeFromDigest,
-} from "@blockchaincommons/lifehash";
+import { lifehash, lifehashFromDigest, LifeHashError } from "@blockchaincommons/lifehash";
+
+const image = lifehash("Hello"); // 32×32 RGB, version2
+image.width; // 32
+image.pixels; // Uint8Array of width × height × channels bytes
+
+const detailed = lifehash(new TextEncoder().encode("Hello"), {
+  version: "detailed", // "version1" | "version2" | "detailed" | "fiducial" | "grayscaleFiducial"
+  moduleSize: 2, // pixels per cell
+  alpha: true, // RGBA
+});
+
+const fromDigest = lifehashFromDigest(sha256Digest); // exactly 32 bytes, or LifeHashError("InvalidDigestLength")
 ```
+
+The pixels are identical to every other LifeHash implementation (C++, Swift,
+Rust); `tests/rust-validation` and the upstream test vectors prove it.
 
 Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons/bc-lifehash-ts/tree/master/examples) directory.
 

@@ -4,8 +4,8 @@
  *
  */
 
-import { Version } from "./version";
-import type { Data } from "./data";
+import { type LifeHashVersion } from "./version";
+import { LifeHashError } from "./error";
 import { CellGrid } from "./cell-grid";
 import { ChangeGrid } from "./change-grid";
 import { FracGrid } from "./frac-grid";
@@ -13,20 +13,29 @@ import { ColorGrid } from "./color-grid";
 import { BitEnumerator } from "./bit-enumerator";
 import { selectGradient } from "./gradients";
 import { selectPattern } from "./patterns";
-import { sha256 } from "./sha256";
-import { toData } from "./format-utils";
+import { sha256 } from "@blockchaincommons/crypto";
 import { clamped, lerpFrom, min, max } from "./color";
 import { dataToHex } from "./hex";
-
-export { Version } from "./version";
 
 /**
  * An RGB(A) image returned from the functions that make LifeHashes.
  */
+/** A rendered LifeHash: `pixels` holds `width × height` RGB triples, or RGBA when `channels` is 4. */
 export interface Image {
-  width: number;
-  height: number;
-  colors: Uint8Array;
+  readonly width: number;
+  readonly height: number;
+  readonly channels: 3 | 4;
+  readonly pixels: Uint8Array;
+}
+
+/** Options for `lifehash` and `lifehashFromDigest`; every field has a default. */
+export interface LifeHashOptions {
+  /** `"version2"` by default. */
+  version?: LifeHashVersion;
+  /** Pixels per cell (a positive integer), 1 by default. */
+  moduleSize?: number;
+  /** Emit RGBA with an opaque alpha channel; RGB by default. */
+  alpha?: boolean;
 }
 
 function makeImage(
@@ -36,10 +45,6 @@ function makeImage(
   moduleSize: number,
   hasAlpha: boolean,
 ): Image {
-  if (!Number.isInteger(moduleSize) || moduleSize <= 0) {
-    throw new Error("Invalid module size");
-  }
-
   const scaledWidth = width * moduleSize;
   const scaledHeight = height * moduleSize;
   const resultComponents = hasAlpha ? 4 : 3;
@@ -69,7 +74,12 @@ function makeImage(
     }
   }
 
-  return { width: scaledWidth, height: scaledHeight, colors: resultColors };
+  return {
+    width: scaledWidth,
+    height: scaledHeight,
+    channels: hasAlpha ? 4 : 3,
+    pixels: resultColors,
+  };
 }
 
 /**
@@ -77,62 +87,40 @@ function makeImage(
  * The caller is responsible to ensure that the string has undergone any
  * necessary Unicode normalization in order to produce consistent results.
  */
-export function makeFromUtf8(
-  s: string,
-  version: Version = Version.version2,
-  moduleSize = 1,
-  hasAlpha = false,
-): Image {
-  return makeFromData(toData(s), version, moduleSize, hasAlpha);
+/**
+ * The LifeHash of `input`: a string is UTF-8 encoded, bytes are used as is;
+ * either is SHA-256 hashed and the digest rendered.
+ */
+export function lifehash(input: string | Uint8Array, options: LifeHashOptions = {}): Image {
+  const data = typeof input === "string" ? new TextEncoder().encode(input) : input;
+  return lifehashFromDigest(sha256(data), options);
 }
 
-/**
- * Make a LifeHash from given data, which may be of any size.
- */
-export function makeFromData(
-  data: Data,
-  version: Version = Version.version2,
-  moduleSize = 1,
-  hasAlpha = false,
-): Image {
-  const digest = sha256(data);
-  return makeFromDigest(digest, version, moduleSize, hasAlpha);
-}
-
-/**
- * Make a LifeHash from the SHA256 digest of some other data.
- * The digest must be exactly 32 pseudorandom bytes. This is the base
- * LifeHash creation algorithm, but if you don't already have a SHA256 hash of
- * some data, then you should access it by calling `makeFromData()`. If you
- * are starting with a UTF-8 string, call `makeFromUtf8()`.
- */
-export function makeFromDigest(
-  digest: Data,
-  version: Version = Version.version2,
-  moduleSize = 1,
-  hasAlpha = false,
-): Image {
+/** The LifeHash of a 32-byte digest (use `lifehash` for the data itself). */
+export function lifehashFromDigest(digest: Uint8Array, options: LifeHashOptions = {}): Image {
+  const { version = "version2", moduleSize = 1, alpha: hasAlpha = false } = options;
+  if (!Number.isInteger(moduleSize) || moduleSize <= 0) {
+    throw LifeHashError.invalidModuleSize(moduleSize);
+  }
   if (digest.length !== 32) {
-    throw new Error("Digest must be 32 bytes");
+    throw LifeHashError.invalidDigestLength(digest.length);
   }
 
   let length: number;
   let maxGenerations: number;
 
   switch (version) {
-    case Version.version1:
-    case Version.version2:
+    case "version1":
+    case "version2":
       length = 16;
       maxGenerations = 150;
       break;
-    case Version.detailed:
-    case Version.fiducial:
-    case Version.grayscale_fiducial:
+    case "detailed":
+    case "fiducial":
+    case "grayscaleFiducial":
       length = 32;
       maxGenerations = 300;
       break;
-    default:
-      throw new Error("Invalid version");
   }
 
   // These get reused from generation to generation by swapping them.
@@ -142,23 +130,23 @@ export function makeFromDigest(
   let nextChangeGrid = new ChangeGrid(length, length);
 
   const historySet = new Set<string>();
-  const history: Data[] = [];
+  const history: Uint8Array[] = [];
 
   // Initialize the cell grid based on version
   switch (version) {
-    case Version.version1:
+    case "version1":
       nextCellGrid.setData(new Uint8Array(digest));
       break;
-    case Version.version2:
+    case "version2":
       // Ensure that .version2 in no way resembles .version1
       nextCellGrid.setData(sha256(new Uint8Array(digest)));
       break;
-    case Version.detailed:
-    case Version.fiducial:
-    case Version.grayscale_fiducial: {
-      let digest1: Data = new Uint8Array(digest);
+    case "detailed":
+    case "fiducial":
+    case "grayscaleFiducial": {
+      let digest1: Uint8Array = new Uint8Array(digest);
       // Ensure that grayscale fiducials in no way resemble the regular color fiducials
-      if (version === Version.grayscale_fiducial) {
+      if (version === "grayscaleFiducial") {
         digest1 = sha256(digest1);
       }
       const digest2 = sha256(digest1);
@@ -209,13 +197,13 @@ export function makeFromDigest(
   // In some cases it can cause the full range of the gradient to go unused.
   // This fixes the problem for the other versions, while remaining compatible
   // with .version1.
-  if (version !== Version.version1) {
+  if (version !== "version1") {
     let minValue = Infinity;
     let maxValue = -Infinity;
     const values = fracGrid.grid.values;
-    for (let i = 0; i < values.length; i++) {
-      minValue = min(minValue, values[i]);
-      maxValue = max(maxValue, values[i]);
+    for (const value of values) {
+      minValue = min(minValue, value);
+      maxValue = max(maxValue, value);
     }
     for (let i = 0; i < values.length; i++) {
       values[i] = lerpFrom(minValue, maxValue, values[i]);
@@ -226,17 +214,17 @@ export function makeFromDigest(
   const entropy = new BitEnumerator(new Uint8Array(digest));
 
   switch (version) {
-    case Version.detailed:
+    case "detailed":
       // Throw away a bit of entropy to ensure we generate different colors and patterns from .version1
       entropy.next();
       break;
-    case Version.version2:
+    case "version2":
       // Throw away two bits of entropy to ensure we generate different colors and patterns from .version1 or .detailed.
       entropy.nextUint2();
       break;
-    case Version.version1:
-    case Version.fiducial:
-    case Version.grayscale_fiducial:
+    case "version1":
+    case "fiducial":
+    case "grayscaleFiducial":
       // No entropy adjustment needed
       break;
   }

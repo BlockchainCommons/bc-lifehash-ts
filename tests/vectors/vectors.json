@@ -3750,7 +3750,7 @@
     "moduleSize": 1,
     "alpha": false
    },
-   "expect": "throw:Digest must be 32 bytes"
+   "expect": "throw:InvalidDigestLength"
   },
   {
    "name": "version2 m=1 digest:0000000000000000",
@@ -3761,7 +3761,7 @@
     "moduleSize": 1,
     "alpha": false
    },
-   "expect": "throw:Digest must be 32 bytes"
+   "expect": "throw:InvalidDigestLength"
   },
   {
    "name": "version2 m=0 \"x\"",
@@ -3772,7 +3772,7 @@
     "moduleSize": 0,
     "alpha": false
    },
-   "expect": "throw:Invalid module size"
+   "expect": "throw:InvalidModuleSize"
   },
   {
    "name": "version2 m=-1 \"x\"",
@@ -3783,7 +3783,7 @@
     "moduleSize": -1,
     "alpha": false
    },
-   "expect": "throw:Invalid module size"
+   "expect": "throw:InvalidModuleSize"
   },
   {
    "name": "version2 m=1.5 \"x\"",
@@ -3794,7 +3794,7 @@
     "moduleSize": 1.5,
     "alpha": false
    },
-   "expect": "throw:Invalid module size"
+   "expect": "throw:InvalidModuleSize"
   },
   {
    "name": "version1 m=1 data:6f68c6c3e9dc5c7b",

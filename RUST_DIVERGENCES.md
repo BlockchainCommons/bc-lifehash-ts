@@ -17,23 +17,31 @@ differs from the Rust reference. It has three kinds of entry:
 2. **JS-only input domain** - inputs that have no Rust analog, so there is nothing to diverge from.
 3. **Mapping equivalences** - JS-specific inputs that are validated through the bytes they produce.
 
+Every entry below is checked by `tests/rust-validation`, a Rust program that
+builds `bc-lifehash` at the tracked commit and replays
+`tests/vectors/vectors.json` (745 vectors: every version × module size ×
+alpha mode over hand-picked and random inputs), comparing image dimensions
+and the SHA-256 of the pixel buffer. The current run: **745 match, 0
+expected divergences, 0 mismatches.**
+
 ## 1. True behavioral divergences
 
-_None recorded yet for the extraction release. The port was byte-compatible with
-the Rust reference at the tracked version when it was extracted from the
-`paritytech/bcts` monorepo._
-
-> Any divergence found after extraction must be added here in the same commit
-> that introduces or discovers it, with the input, the Rust outcome, the
-> TypeScript outcome, and the reason the difference is intentional.
+_None._ Every pixel of every vector is identical.
 
 ## 2. JS-only input domain
 
-_To be documented as the surface is audited._
+- **Invalid module sizes** (`0`, negative, non-integer) and **digests that
+  are not 32 bytes** throw `LifeHashError` (`InvalidModuleSize`,
+  `InvalidDigestLength`). The reference takes a `usize` and a `&[u8]`; a
+  non-integer size cannot be expressed and a wrong-length digest panics.
+  The harness treats both as rejections.
 
 ## 3. Mapping equivalences
 
-_To be documented as the surface is audited._
+- `lifehash(string)` is `make_from_utf8`; `lifehash(Uint8Array)` is
+  `make_from_data`; `lifehashFromDigest` is `make_from_digest`.
+  `LifeHashVersion` strings map to the `Version` enum in order
+  (`lifehashVersionCode`).
 
 ## Maintenance
 

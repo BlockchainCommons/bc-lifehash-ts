@@ -4,8 +4,6 @@
  *
  */
 
-import type { Data } from "./data";
-
 /**
  * A class that takes a block of data and returns its bits singularly or in clusters.
  */
@@ -13,7 +11,7 @@ export class BitEnumerator {
   private index = 0;
   private mask = 0x80;
 
-  constructor(private readonly data: Data) {}
+  constructor(private readonly data: Uint8Array) {}
 
   hasNext(): boolean {
     return this.mask !== 0 || this.index !== this.data.length - 1;
@@ -75,35 +73,8 @@ export class BitEnumerator {
   nextFrac(): number {
     return this.nextUint16() / 65535.0;
   }
-
-  forAll(f: (bit: boolean) => void): void {
-    while (this.hasNext()) {
-      f(this.next());
-    }
-  }
 }
 
 /**
  * A class that accumulates bits fed into it and returns a block of data containing those bits.
  */
-export class BitAggregator {
-  private readonly _data: number[] = [];
-  private bitMask = 0;
-
-  append(bit: boolean): void {
-    if (this.bitMask === 0) {
-      this.bitMask = 0x80;
-      this._data.push(0);
-    }
-
-    if (bit) {
-      this._data[this._data.length - 1] |= this.bitMask;
-    }
-
-    this.bitMask >>= 1;
-  }
-
-  data(): Data {
-    return new Uint8Array(this._data);
-  }
-}
