@@ -1,0 +1,10 @@
+[
+  {
+    "name": "ESM entry (import *), minified + gzipped",
+    "path": "dist/index.mjs",
+    "ignore": [
+      "@blockchaincommons/crypto"
+    ],
+    "limit": "5 kB"
+  }
+]
