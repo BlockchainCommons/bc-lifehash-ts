@@ -342,6 +342,8 @@ exports[`golden: hand corpus > every version, module size and alpha mode, plus r
   "grayscaleFiducial m=1 rgba digest:185f8db32271fe25: 32x32:af894de477831e5c8c2814cf4ea333c340fd633cc9052116dfdcb1a3a60c81fd",
   "grayscaleFiducial m=2 digest:185f8db32271fe25: 64x64:37d4e8adc9053fb25f36d993082a13178d842223913b8bb6707cf1f111fe1069",
   "grayscaleFiducial m=2 rgba digest:185f8db32271fe25: 64x64:b8de00c266c869d2c06afc771a4b880f6e56483c2b1b6153d963151cb8836151",
+  "version2 m=32 "Hello": 1024x1024:6117f6545369d1fe82c419598e543d243726c5a550c53d0ba708bd6eb7d993c9",
+  "detailed m=16 rgba "Hello": 1024x1024:9a399bc09893504ab65a7921b6e164c6ed7c6ce0a00c73a461d0d9ddf1cf8696",
   "version2 m=1 digest:0000000000000000: throw:InvalidDigestLength",
   "version2 m=1 digest:0000000000000000: throw:InvalidDigestLength",
   "version2 m=0 "x": throw:InvalidModuleSize",

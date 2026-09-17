@@ -7,11 +7,11 @@ import { ColorGrid } from "./color-grid";
 import { BitEnumerator } from "./bit-enumerator";
 import { selectGradient } from "./gradients";
 import { selectPattern } from "./patterns";
-import { sha256 } from "@blockchaincommons/crypto";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { clamped, lerpFrom } from "./color";
 
 /**
- * A rendered LifeHash: `pixels` holds `width × height` RGB triples, or RGBA
+ * A rendered LifeHash: `colors` holds `width × height` RGB triples, or RGBA
  * with an opaque alpha of 255 when `channels` is 4. The record is frozen;
  * the pixel buffer is freshly allocated and may be written to.
  */
@@ -23,23 +23,24 @@ export interface LifeHashImage {
   /** Bytes per pixel: 3 for RGB, 4 for RGBA. */
   readonly channels: 3 | 4;
   /** Row-major pixel bytes, exactly `width × height × channels` long. */
-  readonly pixels: Uint8Array<ArrayBuffer>;
+  readonly colors: Uint8Array<ArrayBuffer>;
 }
 
-/** Options for `lifehash` and `lifehashFromDigest`; every field has a default. */
+/**
+ * Options for `makeFromUtf8`, `makeFromData` and `makeFromDigest`: the
+ * reference's three trailing parameters, each with the default the C++
+ * library uses.
+ */
 export interface LifeHashOptions {
   /** `"version2"` by default. */
   readonly version?: LifeHashVersion | undefined;
   /** Pixels per cell (a positive integer), 1 by default. */
   readonly moduleSize?: number | undefined;
   /** Emit RGBA with an opaque alpha channel; RGB by default. */
-  readonly alpha?: boolean | undefined;
+  readonly hasAlpha?: boolean | undefined;
 }
 
 const utf8 = new TextEncoder();
-
-/** The largest pixel buffer `lifehash` will allocate, in bytes. */
-const MAX_PIXEL_BYTES = 2 ** 31 - 1;
 
 /** The image's side at module size 1: the cell grid doubled by symmetry, except for fiducials. */
 function imageSide(version: LifeHashVersion): number {
@@ -81,11 +82,11 @@ function resolveOptions(options: LifeHashOptions | undefined): Resolved {
   const {
     version = "version2",
     moduleSize = 1,
-    alpha: hasAlpha = false,
+    hasAlpha = false,
   } = options as {
     version?: unknown;
     moduleSize?: unknown;
-    alpha?: unknown;
+    hasAlpha?: unknown;
   };
   if (!isLifeHashVersion(version)) {
     throw LifeHashError.invalidVersion(version);
@@ -94,12 +95,17 @@ function resolveOptions(options: LifeHashOptions | undefined): Resolved {
     throw LifeHashError.invalidModuleSize(moduleSize);
   }
   if (typeof hasAlpha !== "boolean") {
-    throw LifeHashError.invalidArgument("alpha", hasAlpha, "a boolean");
+    throw LifeHashError.invalidArgument("hasAlpha", hasAlpha, "a boolean");
   }
+  // The reference allocates whatever size the machine grants. A JavaScript
+  // `number` cannot count more than 2 ** 53 - 1 bytes, so only a size beyond
+  // that is rejected here; an allocation the engine refuses throws its own
+  // `RangeError`, as the reference aborts.
   const channels = hasAlpha ? 4 : 3;
   const side = imageSide(version);
-  const max = Math.floor(Math.sqrt(MAX_PIXEL_BYTES / channels) / side);
-  if (moduleSize > max) {
+  const scaledSide = side * moduleSize;
+  if (!Number.isSafeInteger(scaledSide * scaledSide * channels)) {
+    const max = Math.floor(Math.sqrt(Number.MAX_SAFE_INTEGER / channels) / side);
     throw LifeHashError.moduleSizeTooLarge(
       moduleSize,
       max,
@@ -154,7 +160,7 @@ function makeImage(
   const scaledWidth = width * moduleSize;
   const scaledHeight = height * moduleSize;
   const channels = hasAlpha ? 4 : 3;
-  const pixels = new Uint8Array(scaledWidth * scaledHeight * channels);
+  const colors = new Uint8Array(scaledWidth * scaledHeight * channels);
 
   for (let targetY = 0; targetY < scaledHeight; targetY++) {
     const sourceRow = Math.floor(targetY / moduleSize) * width;
@@ -163,56 +169,65 @@ function makeImage(
       const targetOffset = (targetY * scaledWidth + targetX) * channels;
 
       // Every implementation truncates the scaled float toward zero.
-      pixels[targetOffset] = Math.trunc(clamped(floatColors[sourceOffset]) * 255);
-      pixels[targetOffset + 1] = Math.trunc(clamped(floatColors[sourceOffset + 1]) * 255);
-      pixels[targetOffset + 2] = Math.trunc(clamped(floatColors[sourceOffset + 2]) * 255);
+      colors[targetOffset] = Math.trunc(clamped(floatColors[sourceOffset]) * 255);
+      colors[targetOffset + 1] = Math.trunc(clamped(floatColors[sourceOffset + 1]) * 255);
+      colors[targetOffset + 2] = Math.trunc(clamped(floatColors[sourceOffset + 2]) * 255);
       if (hasAlpha) {
-        pixels[targetOffset + 3] = 255;
+        colors[targetOffset + 3] = 255;
       }
     }
   }
 
-  return Object.freeze({ width: scaledWidth, height: scaledHeight, channels, pixels });
+  return Object.freeze({ width: scaledWidth, height: scaledHeight, channels, colors });
 }
 
 /**
- * The LifeHash of `input`: a string is UTF-8 encoded, bytes are used as is;
- * either is SHA-256 hashed and the digest rendered. A 32-byte `Uint8Array`
- * given here is data and is hashed; use `lifehashFromDigest` to render a
- * digest directly.
+ * The LifeHash of a string: `text` is UTF-8 encoded, SHA-256 hashed and the
+ * digest rendered.
  *
- * @throws `LifeHashError` for an `input` that is neither a string nor a
- * `Uint8Array`, and for every invalid option.
+ * @throws `LifeHashError` for a `text` that is not a string
+ * (`InvalidArgument`), and for every invalid option.
  */
-export function lifehash(input: string | Uint8Array, options?: LifeHashOptions): LifeHashImage {
-  const resolved = resolveOptions(options);
-  let data: Uint8Array;
-  if (typeof input === "string") {
-    data = utf8.encode(input);
-  } else if (isBytes(input)) {
-    data = input;
-  } else {
-    throw LifeHashError.invalidArgument("input", input, "a string or a Uint8Array");
+export function makeFromUtf8(text: string, options?: LifeHashOptions): LifeHashImage {
+  // The data argument is checked before the options, in parameter order.
+  if (typeof text !== "string") {
+    throw LifeHashError.invalidArgument("text", text, "a string");
   }
-  return render(sha256(data), resolved);
+  return render(sha256(utf8.encode(text)), resolveOptions(options));
 }
 
 /**
- * The LifeHash of a 32-byte digest (use `lifehash` for the data itself).
+ * The LifeHash of arbitrary bytes: `data` is SHA-256 hashed and the digest
+ * rendered. A 32-byte `data` is hashed like any other; `makeFromDigest`
+ * renders a digest directly.
+ *
+ * @throws `LifeHashError` for a `data` that is not a `Uint8Array`
+ * (`InvalidArgument`), and for every invalid option.
+ */
+export function makeFromData(data: Uint8Array, options?: LifeHashOptions): LifeHashImage {
+  if (!isBytes(data)) {
+    throw LifeHashError.invalidArgument("data", data, "a Uint8Array");
+  }
+  return render(sha256(data), resolveOptions(options));
+}
+
+/**
+ * The LifeHash of a 32-byte digest, rendered directly (use `makeFromData`
+ * for the data itself).
  *
  * @throws `LifeHashError` for a `digest` that is not a `Uint8Array`
  * (`InvalidArgument`) or not 32 bytes long (`InvalidDigestLength`), and for
  * every invalid option.
  */
-export function lifehashFromDigest(digest: Uint8Array, options?: LifeHashOptions): LifeHashImage {
-  const resolved = resolveOptions(options);
+export function makeFromDigest(digest: Uint8Array, options?: LifeHashOptions): LifeHashImage {
+  // The digest is checked before the options, as the reference checks it on entry.
   if (!isBytes(digest)) {
     throw LifeHashError.invalidArgument("digest", digest, "a Uint8Array");
   }
   if (digest.length !== 32) {
     throw LifeHashError.invalidDigestLength(digest.length);
   }
-  return render(digest, resolved);
+  return render(digest, resolveOptions(options));
 }
 
 function render(digest: Uint8Array, { version, moduleSize, hasAlpha }: Resolved): LifeHashImage {

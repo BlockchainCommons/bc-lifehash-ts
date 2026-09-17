@@ -1,7 +1,6 @@
 //#region src/version.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 *
 * The available versions of LifeHash.
@@ -23,7 +22,6 @@ let Version = /* @__PURE__ */ function(Version) {
 //#region src/grid.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 /**
@@ -146,7 +144,6 @@ var BitAggregator = class {
 //#region src/cell-grid.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 /**
@@ -205,7 +202,6 @@ var CellGrid = class CellGrid {
 //#region src/change-grid.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 /**
@@ -232,7 +228,6 @@ var ChangeGrid = class {
 //#region src/frac-grid.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 /**
@@ -254,7 +249,6 @@ var FracGrid = class {
 //#region src/color.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 /**
@@ -397,7 +391,6 @@ function selectPattern(entropy, version) {
 //#region src/color-grid.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 const snowflakeTransforms = [
@@ -494,7 +487,6 @@ var ColorGrid = class ColorGrid {
 //#region src/hsb-color.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 /**
@@ -546,7 +538,6 @@ var HSBColor = class HSBColor {
 //#region src/color-func.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 /**
@@ -586,7 +577,6 @@ function blend(colors) {
 //#region src/gradients.ts
 /**
 * Copyright © 2023-2026 Blockchain Commons, LLC
-* Copyright © 2025-2026 Parity Technologies
 *
 */
 function grayscale() {

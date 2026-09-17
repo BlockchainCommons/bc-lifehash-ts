@@ -33,8 +33,8 @@ struct Recipe {
     version: String,
     #[serde(rename = "moduleSize", default = "one")]
     module_size: f64,
-    #[serde(default)]
-    alpha: bool,
+    #[serde(rename = "hasAlpha", default)]
+    has_alpha: bool,
 }
 fn one() -> f64 {
     1.0
@@ -67,9 +67,9 @@ fn run(r: &Recipe) -> Outcome {
     let m = if r.module_size < 0.0 { 0 } else { r.module_size as usize };
     let out = catch_unwind(AssertUnwindSafe(|| {
         let img = match r.k.as_str() {
-            "utf8" => make_from_utf8(&r.s, v, m, r.alpha),
-            "data" => make_from_data(&hex::decode(&r.s).unwrap(), v, m, r.alpha),
-            "digest" => make_from_digest(&hex::decode(&r.s).unwrap(), v, m, r.alpha),
+            "utf8" => make_from_utf8(&r.s, v, m, r.has_alpha),
+            "data" => make_from_data(&hex::decode(&r.s).unwrap(), v, m, r.has_alpha),
+            "digest" => make_from_digest(&hex::decode(&r.s).unwrap(), v, m, r.has_alpha),
             other => panic!("unknown recipe kind {other}"),
         };
         format!(

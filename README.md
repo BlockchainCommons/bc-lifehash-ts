@@ -32,26 +32,27 @@ bun add @blockchaincommons/lifehash
 ## Usage Instructions
 
 ```typescript
-import { lifehash, lifehashFromDigest, LifeHashError, LifeHashVersion } from "@blockchaincommons/lifehash";
+import { makeFromUtf8, makeFromData, makeFromDigest, LifeHashError, LifeHashVersion } from "@blockchaincommons/lifehash";
 
-const image = lifehash("Hello"); // 32 × 32 RGB, version2
+const image = makeFromUtf8("Hello"); // 32 × 32 RGB, version2
 image.width; // 32
 image.channels; // 3
-image.pixels; // Uint8Array<ArrayBuffer> of width × height × channels bytes
+image.colors; // Uint8Array<ArrayBuffer> of width × height × channels bytes
 
-const detailed = lifehash(new TextEncoder().encode("Hello"), {
+const detailed = makeFromData(new TextEncoder().encode("Hello"), {
   version: "detailed", // see the table below
   moduleSize: 2, // pixels per cell
-  alpha: true, // RGBA with an opaque alpha channel
+  hasAlpha: true, // RGBA with an opaque alpha channel
 });
 
-const fromDigest = lifehashFromDigest(digest); // exactly 32 bytes
+const fromDigest = makeFromDigest(digest); // exactly 32 bytes
 ```
 
-`lifehash` SHA-256 hashes its input, a string (UTF-8 encoded) or a
-`Uint8Array`, and renders the digest. A 32-byte `Uint8Array` given to
-`lifehash` is data and is hashed like any other; `lifehashFromDigest` renders
-a digest directly.
+`makeFromUtf8` SHA-256 hashes the UTF-8 encoding of a string and
+`makeFromData` SHA-256 hashes bytes; both render the digest. `makeFromDigest`
+renders a 32-byte digest directly. The reference's three trailing parameters
+(`version`, `module_size`, `has_alpha`) are an options object here, with the
+defaults the C++ library uses: `"version2"`, `1`, `false`.
 
 ### Versions
 
@@ -73,13 +74,13 @@ Every argument is checked before any rendering; a failure throws
 | `code` | When |
 |---|---|
 | `InvalidVersion` | `version` is not one of the names above |
-| `InvalidModuleSize` | `moduleSize` is not a positive integer, or the image would exceed 2 GB (`details.max` is the largest allowed) |
+| `InvalidModuleSize` | `moduleSize` is not a positive integer, or the image would hold more than `2 ** 53 - 1` bytes, which no JavaScript `number` can count (`details.max` is the largest allowed) |
 | `InvalidDigestLength` | the digest is not 32 bytes (`details.actual`) |
-| `InvalidArgument` | `input`, `digest`, `options` or `alpha` has the wrong type (`details.parameter`) |
+| `InvalidArgument` | `text`, `data`, `digest`, `options` or `hasAlpha` has the wrong type (`details.parameter`) |
 
 ```typescript
 try {
-  lifehash(text, { version: name });
+  makeFromUtf8(text, { version: name });
 } catch (e) {
   if (LifeHashError.isLifeHashError(e) && e.is("InvalidVersion")) {
     // name is not a LifeHash version
@@ -87,11 +88,17 @@ try {
 }
 ```
 
+Below that limit the image is allocated and rendered whatever its size, as
+the reference does: `moduleSize: 20000` on `detailed` asks for a 1.2 TB
+buffer, and when the engine cannot allocate one it throws its own
+`RangeError`. Bound `moduleSize` yourself before passing on a value from
+untrusted input.
+
 ### In the browser
 
 ```typescript
-const image = lifehash(text, { alpha: true });
-const data = new ImageData(new Uint8ClampedArray(image.pixels.buffer), image.width, image.height);
+const image = makeFromUtf8(text, { hasAlpha: true });
+const data = new ImageData(new Uint8ClampedArray(image.colors.buffer), image.width, image.height);
 canvas.getContext("2d")?.putImageData(data, 0, 0);
 ```
 
@@ -107,16 +114,18 @@ Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons
 
 ### Version History
 
+- **1.0.0-beta.2 (September 16, 2026)** - The reference's constructor names (`makeFromUtf8`, `makeFromData`, `makeFromDigest`), `hasAlpha` and `colors`; images of any size a `number` can count render as the reference does; `@noble/hashes` is the only dependency.
 - **1.0.0-beta.1 (September 16, 2026)** - Initial beta implementation.
 
 ### Roadmap
 
 - Continued testing and auditing on the path from beta to a stable **1.0.0** release.
-- Continued parity with the Rust reference implementation as it evolves (see [`RUST_DIVERGENCES.md`](./RUST_DIVERGENCES.md)).
+- Continued parity with the Rust reference implementation as it evolves (see [`tests/rust-validation/README.md`](./tests/rust-validation/README.md) for what is compared and the current result).
 
 ### Dependencies
 
-`@blockchaincommons/lifehash` depends on `@blockchaincommons/crypto` at runtime.
+`@blockchaincommons/lifehash` depends on `@noble/hashes` at runtime, for
+SHA-256, as the reference depends on the `sha2` crate.
 
 To build and work on this library, you'll need the following tools:
 

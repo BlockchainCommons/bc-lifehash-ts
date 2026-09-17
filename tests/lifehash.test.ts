@@ -1,10 +1,20 @@
 import { describe, it, expect } from "vitest";
-import { lifehash, lifehashFromDigest, LifeHashError, LifeHashVersion } from "../src";
-import { sha256 } from "@blockchaincommons/crypto";
+import { makeFromData, makeFromDigest, makeFromUtf8, LifeHashError, LifeHashVersion } from "../src";
+import { sha256 } from "@noble/hashes/sha2.js";
+
+/** The `LifeHashError` code `f` throws, `undefined` when it returns, or a note for a foreign error. */
+const codeOf = (f: () => unknown): string | undefined => {
+  try {
+    f();
+    return undefined;
+  } catch (e) {
+    return LifeHashError.isLifeHashError(e) ? e.code : `not a LifeHashError: ${String(e)}`;
+  }
+};
 
 describe("LifeHash", () => {
   it("should generate correct lifehash from UTF-8 string", () => {
-    const image = lifehash("Hello");
+    const image = makeFromUtf8("Hello");
 
     expect(image.width).toBe(32);
     expect(image.height).toBe(32);
@@ -16,12 +26,12 @@ describe("LifeHash", () => {
     ];
 
     for (let i = 0; i < expected.length; i++) {
-      expect(image.pixels[i]).toBe(expected[i]);
+      expect(image.colors[i]).toBe(expected[i]);
     }
   });
 
   it("should generate correct lifehash with alpha channel", () => {
-    const image = lifehash("Hello", { alpha: true });
+    const image = makeFromUtf8("Hello", { hasAlpha: true });
 
     expect(image.width).toBe(32);
     expect(image.height).toBe(32);
@@ -33,33 +43,36 @@ describe("LifeHash", () => {
     ];
 
     for (let i = 0; i < expected.length; i++) {
-      expect(image.pixels[i]).toBe(expected[i]);
+      expect(image.colors[i]).toBe(expected[i]);
     }
   });
 });
 
 describe("options and errors", () => {
   it("channels and defaults", () => {
-    expect(lifehash("x").channels).toBe(3);
-    expect(lifehash("x", { alpha: true }).channels).toBe(4);
-    expect(lifehash("x", { version: "detailed" }).width).toBe(64);
-    expect(lifehash("x", { moduleSize: 2 }).width).toBe(64);
-    expect(lifehash(new TextEncoder().encode("x")).pixels).toEqual(lifehash("x").pixels);
+    expect(makeFromUtf8("x").channels).toBe(3);
+    expect(makeFromUtf8("x", { hasAlpha: true }).channels).toBe(4);
+    expect(makeFromUtf8("x", { version: "detailed" }).width).toBe(64);
+    expect(makeFromUtf8("x", { moduleSize: 2 }).width).toBe(64);
+    expect(makeFromData(new TextEncoder().encode("x")).colors).toEqual(makeFromUtf8("x").colors);
+    expect(makeFromDigest(sha256(new TextEncoder().encode("x"))).colors).toEqual(
+      makeFromUtf8("x").colors,
+    );
   });
 
   it("rejects bad module sizes and digests with codes", () => {
     for (const moduleSize of [0, -1, 1.5, NaN]) {
       try {
-        lifehash("x", { moduleSize });
+        makeFromUtf8("x", { moduleSize });
         throw new Error("expected a throw");
       } catch (e) {
         expect(LifeHashError.isLifeHashError(e)).toBe(true);
         expect((e as LifeHashError).code).toBe("InvalidModuleSize");
       }
     }
-    expect(() => lifehashFromDigest(new Uint8Array(31))).toThrow(LifeHashError);
+    expect(() => makeFromDigest(new Uint8Array(31))).toThrow(LifeHashError);
     try {
-      lifehashFromDigest(new Uint8Array(33));
+      makeFromDigest(new Uint8Array(33));
     } catch (e) {
       expect((e as LifeHashError).code).toBe("InvalidDigestLength");
     }
@@ -76,40 +89,55 @@ describe("options and errors", () => {
     expect(Object.isFrozen(LifeHashVersion)).toBe(true);
   });
 
-  it("rejects an unknown version, a non-object options bag and a non-boolean alpha", () => {
-    const codeOf = (f: () => unknown): string | undefined => {
-      try {
-        f();
-        return undefined;
-      } catch (e) {
-        return LifeHashError.isLifeHashError(e) ? e.code : `not a LifeHashError: ${String(e)}`;
-      }
-    };
-    expect(codeOf(() => lifehash("x", { version: "bogus" as never }))).toBe("InvalidVersion");
-    expect(codeOf(() => lifehash("x", null as never))).toBe("InvalidArgument");
-    expect(codeOf(() => lifehash("x", { alpha: 1 as never }))).toBe("InvalidArgument");
-    expect(codeOf(() => lifehash(123 as never))).toBe("InvalidArgument");
-    expect(codeOf(() => lifehashFromDigest("x".repeat(32) as never))).toBe("InvalidArgument");
+  it("rejects an unknown version, a non-object options bag, a non-boolean hasAlpha and mistyped data", () => {
+    expect(codeOf(() => makeFromUtf8("x", { version: "bogus" as never }))).toBe("InvalidVersion");
+    expect(codeOf(() => makeFromUtf8("x", null as never))).toBe("InvalidArgument");
+    expect(codeOf(() => makeFromUtf8("x", { hasAlpha: 1 as never }))).toBe("InvalidArgument");
+    expect(codeOf(() => makeFromUtf8(123 as never))).toBe("InvalidArgument");
+    expect(codeOf(() => makeFromUtf8(new Uint8Array(1) as never))).toBe("InvalidArgument");
+    expect(codeOf(() => makeFromData("x" as never))).toBe("InvalidArgument");
+    expect(codeOf(() => makeFromDigest("x".repeat(32) as never))).toBe("InvalidArgument");
   });
 
-  it("rejects a module size beyond the output ceiling before allocating", () => {
-    expect(lifehash("x", { version: "detailed", moduleSize: 1, alpha: true }).channels).toBe(4);
-    let error: unknown;
-    try {
-      lifehash("x", { version: "detailed", moduleSize: 363, alpha: true });
-    } catch (e) {
-      error = e;
+  it("checks the data argument before the options", () => {
+    expect(codeOf(() => makeFromDigest(new Uint8Array(31), { moduleSize: 0 }))).toBe(
+      "InvalidDigestLength",
+    );
+    expect(codeOf(() => makeFromDigest("x" as never, { version: "bogus" as never }))).toBe(
+      "InvalidArgument",
+    );
+    expect(codeOf(() => makeFromData(123 as never, { moduleSize: 0 }))).toBe("InvalidArgument");
+    expect(codeOf(() => makeFromUtf8(123 as never, { moduleSize: 0 }))).toBe("InvalidArgument");
+    expect(codeOf(() => makeFromUtf8("x", { moduleSize: 0 }))).toBe("InvalidModuleSize");
+  });
+
+  it("rejects a module size whose image no number can count, before allocating", () => {
+    // The largest module size whose image holds at most 2 ** 53 - 1 bytes.
+    const cases: [LifeHashVersion, boolean, number][] = [
+      ["version2", false, 1_712_317],
+      ["version2", true, 1_482_910],
+      ["detailed", false, 856_158],
+      ["detailed", true, 741_455],
+    ];
+    for (const [version, hasAlpha, max] of cases) {
+      let error: unknown;
+      try {
+        makeFromUtf8("x", { version, moduleSize: max + 1, hasAlpha });
+      } catch (e) {
+        error = e;
+      }
+      expect(LifeHashError.isLifeHashError(error)).toBe(true);
+      const e = error as LifeHashError;
+      expect(e.code).toBe("InvalidModuleSize");
+      expect(e.details.code === "InvalidModuleSize" && e.details.max).toBe(max);
+      expect(e.message).toContain(`at most ${max}`);
     }
-    expect(LifeHashError.isLifeHashError(error)).toBe(true);
-    const e = error as LifeHashError;
-    expect(e.code).toBe("InvalidModuleSize");
-    expect(e.details.code === "InvalidModuleSize" && e.details.max).toBe(362);
   });
 
   it("returns a frozen record over a whole buffer", () => {
-    const image = lifehash("x");
+    const image = makeFromUtf8("x");
     expect(Object.isFrozen(image)).toBe(true);
-    expect(image.pixels.buffer.byteLength).toBe(image.pixels.length);
+    expect(image.colors.buffer.byteLength).toBe(image.colors.length);
   });
 });
 

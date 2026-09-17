@@ -16,14 +16,14 @@ const render = (
   s: string,
   version: VersionName,
   moduleSize = 1,
-  alpha = false,
-) => api.render({ k, s, version, moduleSize, alpha });
+  hasAlpha = false,
+) => api.render({ k, s, version, moduleSize, hasAlpha });
 const hex = (u: Uint8Array): string => Buffer.from(u).toString("hex");
 const version = fc.constantFrom(...VERSIONS);
 const bytes = fc.uint8Array({ minLength: 0, maxLength: 48 });
 
 describe("lifehash properties", () => {
-  it("data and digest paths agree: lifehash(d) = lifehashFromDigest(sha256(d))", () => {
+  it("data and digest paths agree: makeFromData(d) = makeFromDigest(sha256(d))", () => {
     fc.assert(
       fc.property(bytes, version, (d, v) => {
         const [w1, h1, p1] = render("data", hex(d), v);

@@ -8,24 +8,28 @@ mismatches). Only the API moved.
 
 ## Entry points
 
+The three functions keep their names; the three positional parameters after
+the data became an options object:
+
 | Before | After |
 |---|---|
-| `makeFromUtf8(s, version, moduleSize, hasAlpha)` | `lifehash(s, { version, moduleSize, alpha })` |
-| `makeFromData(bytes, version, moduleSize, hasAlpha)` | `lifehash(bytes, { version, moduleSize, alpha })` |
-| `makeFromDigest(digest, version, moduleSize, hasAlpha)` | `lifehashFromDigest(digest, { version, moduleSize, alpha })` |
+| `makeFromUtf8(s, version, moduleSize, hasAlpha)` | `makeFromUtf8(s, { version, moduleSize, hasAlpha })` |
+| `makeFromData(bytes, version, moduleSize, hasAlpha)` | `makeFromData(bytes, { version, moduleSize, hasAlpha })` |
+| `makeFromDigest(digest, version, moduleSize, hasAlpha)` | `makeFromDigest(digest, { version, moduleSize, hasAlpha })` |
 
 Every option has the same default as before (`"version2"`, `1`, `false`).
+Each function checks its data argument before the options.
 
 ### Worked example: a command-line renderer
 
 ```diff
 - import { makeFromUtf8, Version, type Image } from "@bcts/lifehash";
-+ import { lifehash, type LifeHashImage } from "@blockchaincommons/lifehash";
++ import { makeFromUtf8, type LifeHashImage } from "@blockchaincommons/lifehash";
 
 - const image: Image = makeFromUtf8(text, parseVersion(name), moduleSize, hasAlpha);
 - writePng(image.width, image.height, image.colors, hasAlpha ? 4 : 3);
-+ const image: LifeHashImage = lifehash(text, { version: name, moduleSize, alpha: hasAlpha });
-+ writePng(image.width, image.height, image.pixels, image.channels);
++ const image: LifeHashImage = makeFromUtf8(text, { version: name, moduleSize, hasAlpha });
++ writePng(image.width, image.height, image.colors, image.channels);
 ```
 
 An unknown `name` throws `LifeHashError` with code `"InvalidVersion"`, so a
@@ -51,9 +55,10 @@ replaces them. `Object.values(LifeHashVersion)` lists the names in order.
 ## Image
 
 `Image` is `LifeHashImage` (the old name collides with the DOM's `Image`).
-`colors` is `pixels`, typed `Uint8Array<ArrayBuffer>`, and `channels` (`3` or
-`4`) says whether an alpha byte follows each RGB triple. The record is
-frozen; the pixel buffer is not. `Data` (an alias of `Uint8Array`) is gone.
+`colors` keeps its name, now typed `Uint8Array<ArrayBuffer>`, and `channels`
+(`3` or `4`) says whether an alpha byte follows each RGB triple. The record
+is frozen; the pixel buffer is not. `Data` (an alias of `Uint8Array`) is
+gone.
 
 ## Errors
 
@@ -63,13 +68,27 @@ Every argument is checked before rendering and a failure throws
 | Input | Before | After |
 |---|---|---|
 | `moduleSize` not a positive integer | plain `Error`, thrown after rendering | `InvalidModuleSize` |
-| `moduleSize` whose image would exceed 2 GB | rendered (or ran out of memory) | `InvalidModuleSize` with `details.max` |
+| `moduleSize` whose image would hold more than `2 ** 53 - 1` bytes | engine `RangeError` | `InvalidModuleSize` with `details.max` |
 | digest not 32 bytes | plain `Error` | `InvalidDigestLength` |
 | unknown version | not expressible (numeric enum) | `InvalidVersion` |
-| `input`/`digest` of the wrong type, `options` not an object, `alpha` not a boolean | engine or dependency error, or silently coerced | `InvalidArgument` naming `details.parameter` |
+| `text`/`data`/`digest` of the wrong type, `options` not an object, `hasAlpha` not a boolean | engine or dependency error, or silently coerced | `InvalidArgument` naming `details.parameter` |
 
 `LifeHashError.isLifeHashError(e)` recognises an error from any copy of the
 package (ESM and CommonJS builds included).
+
+## From `1.0.0-beta.1`
+
+`1.0.0-beta.1` shipped a different surface for a day. If you installed it:
+
+| `1.0.0-beta.1` | `1.0.0-beta.2` |
+|---|---|
+| `lifehash(string, options)` | `makeFromUtf8(text, options)` |
+| `lifehash(bytes, options)` | `makeFromData(data, options)` |
+| `lifehashFromDigest(digest, options)` | `makeFromDigest(digest, options)` |
+| option `alpha` | option `hasAlpha` |
+| `image.pixels` | `image.colors` |
+| `InvalidModuleSize` for an image over 2 GB | rendered; only an image over `2 ** 53 - 1` bytes is rejected |
+| runtime dependency `@blockchaincommons/crypto` | `@noble/hashes` |
 
 ## Appendix: migrating from `@bcts/lifehash`
 
@@ -78,8 +97,9 @@ package (ESM and CommonJS builds included).
 published as `@bcts/lifehash`, into its own Blockchain Commons repository at
 [`BlockchainCommons/bc-lifehash-ts`](https://github.com/BlockchainCommons/bc-lifehash-ts).
 
-`1.0.0-beta.1` is the first release under the new scope; the sections above
-list every renamed and removed name.
+`1.0.0-beta.1` was the first release under the new scope and `1.0.0-beta.2`
+restored the reference's names; the sections above describe the current
+surface and list every renamed and removed name.
 
 ### TL;DR checklist
 
@@ -99,7 +119,7 @@ list every renamed and removed name.
 ```diff
   "dependencies": {
 -   "@bcts/lifehash": "^1.0.0-beta.6"
-+   "@blockchaincommons/lifehash": "^1.0.0-beta.1"
++   "@blockchaincommons/lifehash": "^1.0.0-beta.2"
   }
 ```
 
@@ -139,4 +159,4 @@ shared type is resolved:
 ### 6. What did not change
 
 - The pixels: every image `@bcts/lifehash` rendered, this package renders byte for byte.
-- Parity with the Rust reference implementation. See [`RUST_DIVERGENCES.md`](./RUST_DIVERGENCES.md).
+- Parity with the Rust reference implementation: every vector replays against the `bc-lifehash` crate (see [`tests/rust-validation/README.md`](./tests/rust-validation/README.md)).

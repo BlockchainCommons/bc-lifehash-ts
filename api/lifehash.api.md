@@ -5,9 +5,6 @@
 ```ts
 
 // @public
-export function lifehash(input: string | Uint8Array, options?: LifeHashOptions): LifeHashImage;
-
-// @public
 export class LifeHashError extends Error {
     readonly code: LifeHashErrorCode;
     readonly details: LifeHashErrorDetails;
@@ -51,25 +48,22 @@ export type LifeHashErrorDetails = {
 };
 
 // @public
-export function lifehashFromDigest(digest: Uint8Array, options?: LifeHashOptions): LifeHashImage;
-
-// @public
 export interface LifeHashImage {
     readonly channels: 3 | 4;
+    readonly colors: Uint8Array<ArrayBuffer>;
     readonly height: number;
-    readonly pixels: Uint8Array<ArrayBuffer>;
     readonly width: number;
 }
 
 // @public
 export interface LifeHashOptions {
-    readonly alpha?: boolean | undefined;
+    readonly hasAlpha?: boolean | undefined;
     readonly moduleSize?: number | undefined;
     readonly version?: LifeHashVersion | undefined;
 }
 
 // @public
-export type LifeHashParameter = "input" | "digest" | "options" | "alpha";
+export type LifeHashParameter = "text" | "data" | "digest" | "options" | "hasAlpha";
 
 // @public
 export const LifeHashVersion: {
@@ -82,6 +76,15 @@ export const LifeHashVersion: {
 
 // @public
 export type LifeHashVersion = (typeof LifeHashVersion)[keyof typeof LifeHashVersion];
+
+// @public
+export function makeFromData(data: Uint8Array, options?: LifeHashOptions): LifeHashImage;
+
+// @public
+export function makeFromDigest(digest: Uint8Array, options?: LifeHashOptions): LifeHashImage;
+
+// @public
+export function makeFromUtf8(text: string, options?: LifeHashOptions): LifeHashImage;
 
 // (No @packageDocumentation comment for this package)
 
