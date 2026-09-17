@@ -13,11 +13,11 @@
 export const LifeHashErrorCode: {
   /** `version` is not one of the `LifeHashVersion` names. */
   readonly InvalidVersion: "InvalidVersion";
-  /** `moduleSize` is not a positive integer, or the image it implies exceeds the output ceiling. */
+  /** `moduleSize` is not a positive integer, or the image it implies has more bytes than a `number` can count. */
   readonly InvalidModuleSize: "InvalidModuleSize";
   /** A digest that is not 32 bytes. */
   readonly InvalidDigestLength: "InvalidDigestLength";
-  /** An argument of the wrong type: `input`, `digest`, `options` or `alpha`. */
+  /** An argument of the wrong type: `text`, `data`, `digest`, `options` or `hasAlpha`. */
   readonly InvalidArgument: "InvalidArgument";
 } = Object.freeze({
   InvalidVersion: "InvalidVersion",
@@ -30,7 +30,7 @@ export const LifeHashErrorCode: {
 export type LifeHashErrorCode = (typeof LifeHashErrorCode)[keyof typeof LifeHashErrorCode];
 
 /** The argument an `InvalidArgument` error names. */
-export type LifeHashParameter = "input" | "digest" | "options" | "alpha";
+export type LifeHashParameter = "text" | "data" | "digest" | "options" | "hasAlpha";
 
 /**
  * The structured payload of a {@link LifeHashError}, discriminated by `code`:
@@ -48,7 +48,7 @@ export type LifeHashErrorDetails =
       readonly code: "InvalidModuleSize";
       /** The value received. */
       readonly value: unknown;
-      /** The largest module size the output ceiling allows for the version and channel count, when that is what was exceeded. */
+      /** The largest module size whose image holds at most `2 ** 53 - 1` bytes for the version and channel count, when that is what was exceeded. */
       readonly max?: number;
     }
   | {
@@ -82,8 +82,8 @@ export function describeValue(value: unknown): string {
 
 /**
  * Thrown for an unknown version name (`InvalidVersion`), a module size that
- * is not a positive integer or would exceed the output ceiling
- * (`InvalidModuleSize`), a digest that is not 32 bytes
+ * is not a positive integer or whose image would hold more bytes than a
+ * `number` can count (`InvalidModuleSize`), a digest that is not 32 bytes
  * (`InvalidDigestLength`), and an argument of the wrong type
  * (`InvalidArgument`). Every check runs before any rendering. Instances come
  * from the static factories only.
@@ -91,7 +91,7 @@ export function describeValue(value: unknown): string {
  * @example
  * ```ts
  * try {
- *   lifehash(text, { version: name });
+ *   makeFromUtf8(text, { version: name });
  * } catch (e) {
  *   if (LifeHashError.isLifeHashError(e) && e.is("InvalidVersion")) {
  *     // name is not a LifeHash version
@@ -142,7 +142,7 @@ export class LifeHashError extends Error {
     });
   }
 
-  /** `value` would make the image exceed the output ceiling; `max` is the largest allowed. */
+  /** `value` would make the image larger than `2 ** 53 - 1` bytes; `max` is the largest allowed. */
   static moduleSizeTooLarge(value: number, max: number, what: string): LifeHashError {
     return new LifeHashError(`moduleSize must be at most ${max} for ${what}, got ${value}`, {
       code: "InvalidModuleSize",

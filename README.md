@@ -32,26 +32,21 @@ bun add @blockchaincommons/lifehash
 ## Usage Instructions
 
 ```typescript
-import { lifehash, lifehashFromDigest, LifeHashError, LifeHashVersion } from "@blockchaincommons/lifehash";
+import { makeFromUtf8, makeFromData, makeFromDigest, LifeHashError, LifeHashVersion } from "@blockchaincommons/lifehash";
 
-const image = lifehash("Hello"); // 32 × 32 RGB, version2
+const image = makeFromUtf8("Hello"); // 32 × 32 RGB, version2
 image.width; // 32
 image.channels; // 3
-image.pixels; // Uint8Array<ArrayBuffer> of width × height × channels bytes
+image.colors; // Uint8Array<ArrayBuffer> of width × height × channels bytes
 
-const detailed = lifehash(new TextEncoder().encode("Hello"), {
+const detailed = makeFromData(new TextEncoder().encode("Hello"), {
   version: "detailed", // see the table below
   moduleSize: 2, // pixels per cell
-  alpha: true, // RGBA with an opaque alpha channel
+  hasAlpha: true, // RGBA with an opaque alpha channel
 });
 
-const fromDigest = lifehashFromDigest(digest); // exactly 32 bytes
+const fromDigest = makeFromDigest(digest); // exactly 32 bytes
 ```
-
-`lifehash` SHA-256 hashes its input, a string (UTF-8 encoded) or a
-`Uint8Array`, and renders the digest. A 32-byte `Uint8Array` given to
-`lifehash` is data and is hashed like any other; `lifehashFromDigest` renders
-a digest directly.
 
 ### Versions
 
@@ -63,23 +58,9 @@ a digest directly.
 | `"fiducial"` | 32 × 32 | 32 × 32, no symmetry | high contrast, for machine-vision fiducials |
 | `"grayscaleFiducial"` | 32 × 32 | 32 × 32, no symmetry | grayscale |
 
-`Object.values(LifeHashVersion)` lists the names in this order.
-
-### Errors
-
-Every argument is checked before any rendering; a failure throws
-`LifeHashError`, whose `code` and typed `details` say what was wrong:
-
-| `code` | When |
-|---|---|
-| `InvalidVersion` | `version` is not one of the names above |
-| `InvalidModuleSize` | `moduleSize` is not a positive integer, or the image would exceed 2 GB (`details.max` is the largest allowed) |
-| `InvalidDigestLength` | the digest is not 32 bytes (`details.actual`) |
-| `InvalidArgument` | `input`, `digest`, `options` or `alpha` has the wrong type (`details.parameter`) |
-
 ```typescript
 try {
-  lifehash(text, { version: name });
+  makeFromUtf8(text, { version: name });
 } catch (e) {
   if (LifeHashError.isLifeHashError(e) && e.is("InvalidVersion")) {
     // name is not a LifeHash version
@@ -90,14 +71,10 @@ try {
 ### In the browser
 
 ```typescript
-const image = lifehash(text, { alpha: true });
-const data = new ImageData(new Uint8ClampedArray(image.pixels.buffer), image.width, image.height);
+const image = makeFromUtf8(text, { hasAlpha: true });
+const data = new ImageData(new Uint8ClampedArray(image.colors.buffer), image.width, image.height);
 canvas.getContext("2d")?.putImageData(data, 0, 0);
 ```
-
-The pixels are identical to every other LifeHash implementation (C++, Swift,
-Rust): the golden vectors replay against the `bc-lifehash` crate in
-`tests/rust-validation`, and the upstream test vectors are checked directly.
 
 Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons/bc-lifehash-ts/tree/master/examples) directory.
 
@@ -107,29 +84,30 @@ Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons
 
 ### Version History
 
+- **1.0.0-beta.2 (September 16, 2026)** - Constructor names (`makeFromUtf8`, `makeFromData`, `makeFromDigest`), `hasAlpha` and `colors`; images of any size a `number` can count render;
 - **1.0.0-beta.1 (September 16, 2026)** - Initial beta implementation.
 
 ### Roadmap
 
 - Continued testing and auditing on the path from beta to a stable **1.0.0** release.
-- Continued parity with the Rust reference implementation as it evolves (see [`RUST_DIVERGENCES.md`](./RUST_DIVERGENCES.md)).
 
 ### Dependencies
 
-`@blockchaincommons/lifehash` depends on `@blockchaincommons/crypto` at runtime.
+`@blockchaincommons/lifehash` depends on `@noble/hashes` at runtime, for
+SHA-256, as the reference depends on the `sha2` crate.
 
 To build and work on this library, you'll need the following tools:
 
 - [Node.js](https://nodejs.org/) >= 22.12 - JavaScript runtime.
-- [Bun](https://bun.sh/) - used in CI to install dependencies and run scripts (any Node-compatible package manager also works).
+- [Bun](https://bun.sh/) - used to install dependencies and run scripts (any node package manager works).
 - [TypeScript](https://www.typescriptlang.org/) >= 5.7 - language and type checker.
 
 ### Derived from ...
 
 This `bc-lifehash-ts` project is either derived from or was inspired by:
 
-- [BlockchainCommons/bc-lifehash-rust](https://github.com/BlockchainCommons/bc-lifehash-rust) - The reference Rust implementation, by [Wolf McNally](https://github.com/wolfmcnally).
-- [paritytech/bcts](https://github.com/paritytech/bcts) - A TypeScript port covering many Blockchain Commons' implementations, by [Parity Technologies](https://github.com/paritytech).
+- [BlockchainCommons/bc-sskr-rust](https://github.com/BlockchainCommons/bc-sskr-rust) - The reference Rust implementation, by [Wolf McNally](https://github.com/wolfmcnally).
+- [paritytech/bcts](https://github.com/paritytech/bcts) - A TypeScript port of many Blockchain Commons' specs, by [Parity Technologies](https://github.com/paritytech).
 
 ## Financial Support
 

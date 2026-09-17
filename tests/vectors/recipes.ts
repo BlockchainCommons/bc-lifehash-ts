@@ -26,7 +26,7 @@ export interface RenderRecipe {
   s: string;
   version: VersionName;
   moduleSize: number;
-  alpha: boolean;
+  hasAlpha: boolean;
 }
 export interface DomainRecipe {
   k: "domain";
@@ -53,7 +53,7 @@ export const isBaselineSupported = (r: Recipe): boolean => r.k !== "domain";
 export function recipeName(r: Recipe): string {
   if (r.k === "domain") return `domain ${r.s}`;
   const input = r.k === "utf8" ? JSON.stringify(r.s).slice(0, 24) : `${r.k}:${r.s.slice(0, 16)}`;
-  return `${r.version} m=${r.moduleSize}${r.alpha ? " rgba" : ""} ${input}`;
+  return `${r.version} m=${r.moduleSize}${r.hasAlpha ? " rgba" : ""} ${input}`;
 }
 
 const imageOutcome = (w: number, h: number, pixels: Uint8Array): Outcome =>
@@ -70,9 +70,9 @@ export function materialize(api: VectorApi, r: Recipe): Outcome {
   try {
     if (r.k === "domain") {
       if (api.domain === undefined) return "unsupported";
-      const v = api.domain(r.s) as { width?: unknown; height?: unknown; pixels?: unknown };
-      if (v !== null && typeof v === "object" && v.pixels instanceof Uint8Array) {
-        return imageOutcome(v.width as number, v.height as number, v.pixels);
+      const v = api.domain(r.s) as { width?: unknown; height?: unknown; colors?: unknown };
+      if (v !== null && typeof v === "object" && v.colors instanceof Uint8Array) {
+        return imageOutcome(v.width as number, v.height as number, v.colors);
       }
       return `value:${JSON.stringify(v) ?? String(v)}`;
     }
@@ -99,27 +99,29 @@ export function frozenAdapterFor(m: any): VectorApi {
     render(r) {
       const img =
         r.k === "utf8"
-          ? m.makeFromUtf8(r.s, version(r.version), r.moduleSize, r.alpha)
+          ? m.makeFromUtf8(r.s, version(r.version), r.moduleSize, r.hasAlpha)
           : r.k === "data"
-            ? m.makeFromData(unhex(r.s), version(r.version), r.moduleSize, r.alpha)
-            : m.makeFromDigest(unhex(r.s), version(r.version), r.moduleSize, r.alpha);
+            ? m.makeFromData(unhex(r.s), version(r.version), r.moduleSize, r.hasAlpha)
+            : m.makeFromDigest(unhex(r.s), version(r.version), r.moduleSize, r.hasAlpha);
       return [img.width, img.height, new Uint8Array(img.colors)];
     },
     errorCode: () => undefined,
   };
 }
 
-/** The current surface: `lifehash(input, options)`, string versions. */
+/** The current surface: the reference's three constructors with an options object, string versions. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function adapterFor(m: any): VectorApi {
   return {
     render(r) {
-      const options = { version: r.version, moduleSize: r.moduleSize, alpha: r.alpha };
+      const options = { version: r.version, moduleSize: r.moduleSize, hasAlpha: r.hasAlpha };
       const img =
-        r.k === "digest"
-          ? m.lifehashFromDigest(unhex(r.s), options)
-          : m.lifehash(r.k === "utf8" ? r.s : unhex(r.s), options);
-      return [img.width, img.height, img.pixels];
+        r.k === "utf8"
+          ? m.makeFromUtf8(r.s, options)
+          : r.k === "data"
+            ? m.makeFromData(unhex(r.s), options)
+            : m.makeFromDigest(unhex(r.s), options);
+      return [img.width, img.height, img.colors];
     },
     domain(name) {
       const c = DOMAIN_CASES[name];

@@ -8,7 +8,12 @@
  * first row of pixels as hex.
  */
 import { createHash } from "node:crypto";
-import { lifehash, LifeHashError, LifeHashVersion, type LifeHashVersion as Version } from "../src";
+import {
+  makeFromUtf8,
+  LifeHashError,
+  LifeHashVersion,
+  type LifeHashVersion as Version,
+} from "../src";
 
 const [input = "Hello, World!", versionArg = "version2"] = process.argv.slice(2);
 
@@ -20,10 +25,10 @@ if (!(versions as string[]).includes(versionArg)) {
 const version = versionArg as Version;
 
 try {
-  const image = lifehash(input, { version, alpha: true });
-  const fingerprint = createHash("sha256").update(image.pixels).digest("hex");
+  const image = makeFromUtf8(input, { version, hasAlpha: true });
+  const fingerprint = createHash("sha256").update(image.colors).digest("hex");
   console.log(`${image.width}×${image.height}, ${image.channels} channels, sha256 ${fingerprint}`);
-  const row = image.pixels.subarray(0, image.width * image.channels);
+  const row = image.colors.subarray(0, image.width * image.channels);
   console.log(Buffer.from(row).toString("hex"));
 } catch (e) {
   if (LifeHashError.isLifeHashError(e)) {

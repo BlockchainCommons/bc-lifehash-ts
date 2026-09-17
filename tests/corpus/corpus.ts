@@ -50,7 +50,7 @@ const every = (
   for (const { k, s } of inputs)
     for (const version of versions)
       for (const moduleSize of sizes)
-        for (const alpha of alphas) out.push({ k, s, version, moduleSize, alpha });
+        for (const hasAlpha of alphas) out.push({ k, s, version, moduleSize, hasAlpha });
   return out;
 };
 
@@ -64,12 +64,15 @@ export function* hand(): Generator<Recipe> {
     [1, 2],
     [false, true],
   );
+  // larger tilings, so a big image is compared with the reference too
+  yield { k: "utf8", s: "Hello", version: "version2", moduleSize: 32, hasAlpha: false };
+  yield { k: "utf8", s: "Hello", version: "detailed", moduleSize: 16, hasAlpha: true };
   // invalid inputs
-  yield { k: "digest", s: "00".repeat(31), version: "version2", moduleSize: 1, alpha: false };
-  yield { k: "digest", s: "00".repeat(33), version: "version2", moduleSize: 1, alpha: false };
-  yield { k: "utf8", s: "x", version: "version2", moduleSize: 0, alpha: false };
-  yield { k: "utf8", s: "x", version: "version2", moduleSize: -1, alpha: false };
-  yield { k: "utf8", s: "x", version: "version2", moduleSize: 1.5, alpha: false };
+  yield { k: "digest", s: "00".repeat(31), version: "version2", moduleSize: 1, hasAlpha: false };
+  yield { k: "digest", s: "00".repeat(33), version: "version2", moduleSize: 1, hasAlpha: false };
+  yield { k: "utf8", s: "x", version: "version2", moduleSize: 0, hasAlpha: false };
+  yield { k: "utf8", s: "x", version: "version2", moduleSize: -1, hasAlpha: false };
+  yield { k: "utf8", s: "x", version: "version2", moduleSize: 1.5, hasAlpha: false };
 }
 
 /** Random inputs of length 0–64, every version, module size 1, both alpha modes. */
@@ -79,12 +82,13 @@ export function* generated(): Generator<Recipe> {
     const len = next() % 65;
     const s = hexOf(next, len);
     for (const version of VERSIONS)
-      for (const alpha of [false, true]) yield { k: "data", s, version, moduleSize: 1, alpha };
+      for (const hasAlpha of [false, true])
+        yield { k: "data", s, version, moduleSize: 1, hasAlpha };
   }
   // a few at module size 3
   for (let i = 0; i < 10; i++) {
     const s = hexOf(next, 16);
-    for (const version of VERSIONS) yield { k: "data", s, version, moduleSize: 3, alpha: false };
+    for (const version of VERSIONS) yield { k: "data", s, version, moduleSize: 3, hasAlpha: false };
   }
 }
 
@@ -122,14 +126,14 @@ export const upstreamRecipe = (v: UpstreamVector): RenderRecipe => ({
   s: v.input,
   version: versionName(v.version),
   moduleSize: v.module_size,
-  alpha: v.has_alpha,
+  hasAlpha: v.has_alpha,
 });
 export const fuzzRecipe = (v: FuzzVector): RenderRecipe => ({
   k: "data",
   s: v.input_hex,
   version: versionName(v.version),
   moduleSize: v.module_size,
-  alpha: v.has_alpha,
+  hasAlpha: v.has_alpha,
 });
 
 /** The 35 vectors of the C++ reference's generator. */

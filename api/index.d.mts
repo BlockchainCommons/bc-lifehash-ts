@@ -20,7 +20,7 @@ export type LifeHashVersion = (typeof LifeHashVersion)[keyof typeof LifeHashVers
 //#endregion
 //#region src/lifehash.d.ts
 /**
- * A rendered LifeHash: `pixels` holds `width × height` RGB triples, or RGBA
+ * A rendered LifeHash: `colors` holds `width × height` RGB triples, or RGBA
  * with an opaque alpha of 255 when `channels` is 4. The record is frozen;
  * the pixel buffer is freshly allocated and may be written to.
  */
@@ -32,35 +32,47 @@ interface LifeHashImage {
   /** Bytes per pixel: 3 for RGB, 4 for RGBA. */
   readonly channels: 3 | 4;
   /** Row-major pixel bytes, exactly `width × height × channels` long. */
-  readonly pixels: Uint8Array<ArrayBuffer>;
+  readonly colors: Uint8Array<ArrayBuffer>;
 }
-/** Options for `lifehash` and `lifehashFromDigest`; every field has a default. */
+/**
+ * Options for `makeFromUtf8`, `makeFromData` and `makeFromDigest`: the
+ * reference's three trailing parameters, each with the default the C++
+ * library uses.
+ */
 interface LifeHashOptions {
   /** `"version2"` by default. */
   readonly version?: LifeHashVersion | undefined;
   /** Pixels per cell (a positive integer), 1 by default. */
   readonly moduleSize?: number | undefined;
   /** Emit RGBA with an opaque alpha channel; RGB by default. */
-  readonly alpha?: boolean | undefined;
+  readonly hasAlpha?: boolean | undefined;
 }
 /**
- * The LifeHash of `input`: a string is UTF-8 encoded, bytes are used as is;
- * either is SHA-256 hashed and the digest rendered. A 32-byte `Uint8Array`
- * given here is data and is hashed; use `lifehashFromDigest` to render a
- * digest directly.
+ * The LifeHash of a string: `text` is UTF-8 encoded, SHA-256 hashed and the
+ * digest rendered.
  *
- * @throws `LifeHashError` for an `input` that is neither a string nor a
- * `Uint8Array`, and for every invalid option.
+ * @throws `LifeHashError` for a `text` that is not a string
+ * (`InvalidArgument`), and for every invalid option.
  */
-export declare function lifehash(input: string | Uint8Array, options?: LifeHashOptions): LifeHashImage;
+export declare function makeFromUtf8(text: string, options?: LifeHashOptions): LifeHashImage;
 /**
- * The LifeHash of a 32-byte digest (use `lifehash` for the data itself).
+ * The LifeHash of arbitrary bytes: `data` is SHA-256 hashed and the digest
+ * rendered. A 32-byte `data` is hashed like any other; `makeFromDigest`
+ * renders a digest directly.
+ *
+ * @throws `LifeHashError` for a `data` that is not a `Uint8Array`
+ * (`InvalidArgument`), and for every invalid option.
+ */
+export declare function makeFromData(data: Uint8Array, options?: LifeHashOptions): LifeHashImage;
+/**
+ * The LifeHash of a 32-byte digest, rendered directly (use `makeFromData`
+ * for the data itself).
  *
  * @throws `LifeHashError` for a `digest` that is not a `Uint8Array`
  * (`InvalidArgument`) or not 32 bytes long (`InvalidDigestLength`), and for
  * every invalid option.
  */
-export declare function lifehashFromDigest(digest: Uint8Array, options?: LifeHashOptions): LifeHashImage;
+export declare function makeFromDigest(digest: Uint8Array, options?: LifeHashOptions): LifeHashImage;
 //#endregion
 //#region src/error.d.ts
 /**
@@ -77,17 +89,17 @@ export declare function lifehashFromDigest(digest: Uint8Array, options?: LifeHas
 export declare const LifeHashErrorCode: {
   /** `version` is not one of the `LifeHashVersion` names. */
   readonly InvalidVersion: "InvalidVersion";
-  /** `moduleSize` is not a positive integer, or the image it implies exceeds the output ceiling. */
+  /** `moduleSize` is not a positive integer, or the image it implies has more bytes than a `number` can count. */
   readonly InvalidModuleSize: "InvalidModuleSize";
   /** A digest that is not 32 bytes. */
   readonly InvalidDigestLength: "InvalidDigestLength";
-  /** An argument of the wrong type: `input`, `digest`, `options` or `alpha`. */
+  /** An argument of the wrong type: `text`, `data`, `digest`, `options` or `hasAlpha`. */
   readonly InvalidArgument: "InvalidArgument";
 };
 /** Machine-readable discriminant for a {@link LifeHashError}. */
 export type LifeHashErrorCode = (typeof LifeHashErrorCode)[keyof typeof LifeHashErrorCode];
 /** The argument an `InvalidArgument` error names. */
-type LifeHashParameter = "input" | "digest" | "options" | "alpha";
+type LifeHashParameter = "text" | "data" | "digest" | "options" | "hasAlpha";
 /**
  * The structured payload of a {@link LifeHashError}, discriminated by `code`:
  * `e.details.code === "InvalidDigestLength"` narrows to `{ expected, actual }`.
@@ -102,7 +114,7 @@ type LifeHashErrorDetails = {
   readonly code: "InvalidModuleSize";
   /** The value received. */
   readonly value: unknown;
-  /** The largest module size the output ceiling allows for the version and channel count, when that is what was exceeded. */
+  /** The largest module size whose image holds at most `2 ** 53 - 1` bytes for the version and channel count, when that is what was exceeded. */
   readonly max?: number;
 } | {
   /** The discriminant. */
@@ -121,8 +133,8 @@ type LifeHashErrorDetails = {
 };
 /**
  * Thrown for an unknown version name (`InvalidVersion`), a module size that
- * is not a positive integer or would exceed the output ceiling
- * (`InvalidModuleSize`), a digest that is not 32 bytes
+ * is not a positive integer or whose image would hold more bytes than a
+ * `number` can count (`InvalidModuleSize`), a digest that is not 32 bytes
  * (`InvalidDigestLength`), and an argument of the wrong type
  * (`InvalidArgument`). Every check runs before any rendering. Instances come
  * from the static factories only.
@@ -130,7 +142,7 @@ type LifeHashErrorDetails = {
  * @example
  * ```ts
  * try {
- *   lifehash(text, { version: name });
+ *   makeFromUtf8(text, { version: name });
  * } catch (e) {
  *   if (LifeHashError.isLifeHashError(e) && e.is("InvalidVersion")) {
  *     // name is not a LifeHash version
@@ -154,7 +166,7 @@ export declare class LifeHashError extends Error {
   static invalidVersion(value: unknown): LifeHashError;
   /** `value` is not a positive integer. */
   static invalidModuleSize(value: unknown): LifeHashError;
-  /** `value` would make the image exceed the output ceiling; `max` is the largest allowed. */
+  /** `value` would make the image larger than `2 ** 53 - 1` bytes; `max` is the largest allowed. */
   static moduleSizeTooLarge(value: number, max: number, what: string): LifeHashError;
   /** The digest had `actual` bytes; 32 were required. */
   static invalidDigestLength(actual: number): LifeHashError;

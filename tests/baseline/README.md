@@ -12,4 +12,4 @@ the working tree and asserts identical outcomes; it pins the sha256 below so
 an accidental rebuild cannot turn the differential into a self-comparison.
 
 Baseline commit: 63773b9a73b1d4fa700c6d6d105be7dfdda9a3b1
-Baseline sha256: 0f9607cc2a633220826dfee54dd01d6721319cde16ab3cba4851730eec348ac1
+Baseline sha256: 235f34ae85a8060dcd3cc9f0132c97198f6b4764af5b90b840865a0d1912b444
