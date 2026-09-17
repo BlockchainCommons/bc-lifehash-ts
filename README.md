@@ -48,12 +48,6 @@ const detailed = makeFromData(new TextEncoder().encode("Hello"), {
 const fromDigest = makeFromDigest(digest); // exactly 32 bytes
 ```
 
-`makeFromUtf8` SHA-256 hashes the UTF-8 encoding of a string and
-`makeFromData` SHA-256 hashes bytes; both render the digest. `makeFromDigest`
-renders a 32-byte digest directly. The reference's three trailing parameters
-(`version`, `module_size`, `has_alpha`) are an options object here, with the
-defaults the C++ library uses: `"version2"`, `1`, `false`.
-
 ### Versions
 
 | `version` | Cells | Image at `moduleSize: 1` | Gamut |
@@ -63,20 +57,6 @@ defaults the C++ library uses: `"version2"`, `1`, `false`.
 | `"detailed"` | 32 × 32 | 64 × 64 | CMYK-friendly |
 | `"fiducial"` | 32 × 32 | 32 × 32, no symmetry | high contrast, for machine-vision fiducials |
 | `"grayscaleFiducial"` | 32 × 32 | 32 × 32, no symmetry | grayscale |
-
-`Object.values(LifeHashVersion)` lists the names in this order.
-
-### Errors
-
-Every argument is checked before any rendering; a failure throws
-`LifeHashError`, whose `code` and typed `details` say what was wrong:
-
-| `code` | When |
-|---|---|
-| `InvalidVersion` | `version` is not one of the names above |
-| `InvalidModuleSize` | `moduleSize` is not a positive integer, or the image would hold more than `2 ** 53 - 1` bytes, which no JavaScript `number` can count (`details.max` is the largest allowed) |
-| `InvalidDigestLength` | the digest is not 32 bytes (`details.actual`) |
-| `InvalidArgument` | `text`, `data`, `digest`, `options` or `hasAlpha` has the wrong type (`details.parameter`) |
 
 ```typescript
 try {
@@ -88,12 +68,6 @@ try {
 }
 ```
 
-Below that limit the image is allocated and rendered whatever its size, as
-the reference does: `moduleSize: 20000` on `detailed` asks for a 1.2 TB
-buffer, and when the engine cannot allocate one it throws its own
-`RangeError`. Bound `moduleSize` yourself before passing on a value from
-untrusted input.
-
 ### In the browser
 
 ```typescript
@@ -101,10 +75,6 @@ const image = makeFromUtf8(text, { hasAlpha: true });
 const data = new ImageData(new Uint8ClampedArray(image.colors.buffer), image.width, image.height);
 canvas.getContext("2d")?.putImageData(data, 0, 0);
 ```
-
-The pixels are identical to every other LifeHash implementation (C++, Swift,
-Rust): the golden vectors replay against the `bc-lifehash` crate in
-`tests/rust-validation`, and the upstream test vectors are checked directly.
 
 Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons/bc-lifehash-ts/tree/master/examples) directory.
 
@@ -114,13 +84,12 @@ Runnable examples live in the [`examples/`](https://github.com/BlockchainCommons
 
 ### Version History
 
-- **1.0.0-beta.2 (September 16, 2026)** - The reference's constructor names (`makeFromUtf8`, `makeFromData`, `makeFromDigest`), `hasAlpha` and `colors`; images of any size a `number` can count render as the reference does; `@noble/hashes` is the only dependency.
+- **1.0.0-beta.2 (September 16, 2026)** - Constructor names (`makeFromUtf8`, `makeFromData`, `makeFromDigest`), `hasAlpha` and `colors`; images of any size a `number` can count render;
 - **1.0.0-beta.1 (September 16, 2026)** - Initial beta implementation.
 
 ### Roadmap
 
 - Continued testing and auditing on the path from beta to a stable **1.0.0** release.
-- Continued parity with the Rust reference implementation as it evolves (see [`tests/rust-validation/README.md`](./tests/rust-validation/README.md) for what is compared and the current result).
 
 ### Dependencies
 
@@ -130,15 +99,15 @@ SHA-256, as the reference depends on the `sha2` crate.
 To build and work on this library, you'll need the following tools:
 
 - [Node.js](https://nodejs.org/) >= 22.12 - JavaScript runtime.
-- [Bun](https://bun.sh/) - used in CI to install dependencies and run scripts (any Node-compatible package manager also works).
+- [Bun](https://bun.sh/) - used to install dependencies and run scripts (any node package manager works).
 - [TypeScript](https://www.typescriptlang.org/) >= 5.7 - language and type checker.
 
 ### Derived from ...
 
 This `bc-lifehash-ts` project is either derived from or was inspired by:
 
-- [BlockchainCommons/bc-lifehash-rust](https://github.com/BlockchainCommons/bc-lifehash-rust) - The reference Rust implementation, by [Wolf McNally](https://github.com/wolfmcnally).
-- [paritytech/bcts](https://github.com/paritytech/bcts) - A TypeScript port covering many Blockchain Commons' implementations, by [Parity Technologies](https://github.com/paritytech).
+- [BlockchainCommons/bc-sskr-rust](https://github.com/BlockchainCommons/bc-sskr-rust) - The reference Rust implementation, by [Wolf McNally](https://github.com/wolfmcnally).
+- [paritytech/bcts](https://github.com/paritytech/bcts) - A TypeScript port of many Blockchain Commons' specs, by [Parity Technologies](https://github.com/paritytech).
 
 ## Financial Support
 

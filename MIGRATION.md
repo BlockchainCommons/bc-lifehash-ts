@@ -1,10 +1,6 @@
 # Migrating from `@bcts/lifehash` to `@blockchaincommons/lifehash`
 
-The pixels are unchanged for every valid input: images rendered by
-`@bcts/lifehash` and by this package are byte-identical (proven by
-`tests/differential.test.ts` against the frozen build of the earlier surface
-and by `tests/rust-validation` against `bc-lifehash` 0.1.0, 1 814 vectors, 0
-mismatches). Only the API moved.
+`@blockchaincommons/lifehash` is the successor to `@bcts/lifehash`.
 
 ## Entry points
 
@@ -144,19 +140,3 @@ field. That build is dropped: IIFE entry points cannot share chunks, which forks
 module-level singletons across entry points. Use the ESM entry (`import`) or the
 CJS entry (`require`); both are declared in `exports` and validated in CI by
 `publint` and `@arethetypeswrong/cli`.
-
-### 5. Peer packages renamed too
-
-Every sibling library moved from the `@bcts` scope to `@blockchaincommons`. If
-you depend on more than one, rename them together so a single copy of each
-shared type is resolved:
-
-| Old | New |
-|---|---|
-| `@bcts/dcbor` | `@blockchaincommons/dcbor` |
-| `@bcts/<name>` | `@blockchaincommons/<name>` |
-
-### 6. What did not change
-
-- The pixels: every image `@bcts/lifehash` rendered, this package renders byte for byte.
-- Parity with the Rust reference implementation: every vector replays against the `bc-lifehash` crate (see [`tests/rust-validation/README.md`](./tests/rust-validation/README.md)).
